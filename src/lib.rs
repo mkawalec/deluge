@@ -2,8 +2,10 @@ use core::pin::Pin;
 use std::future::{self, Future};
 use std::boxed::Box;
 use futures::future::BoxFuture;
+use futures::task::{Context, Poll};
 use std::marker::PhantomData;
 use pin_project::pin_project;
+use std::collections::HashMap;
 
 pub trait Deluge: Send + Sized
 {
@@ -72,33 +74,46 @@ where
 }
 
 #[pin_project]
-pub struct Collect<Del, C> {
-    #[pin]
-    deluge: Del,
-    collection: C,
+pub struct Collect<'a, Del, C> {
+    deluge: Option<Del>,
+    current_index: usize,
+    polled_futures: HashMap<usize, BoxFuture<'a, C>>,
+    completed_futures: HashMap<usize, BoxFuture<'a, C>>,
 }
 
-impl<Del: Deluge, C: Default> Collect<Del, C> 
+impl<'a, Del: Deluge, C: Default> Collect<'a, Del, C> 
 {
     pub(crate) fn new(deluge: Del) -> Self {
         Self {
-            deluge,
-            collection: Default::default(),
+            deluge: Some(deluge),
+            current_index: 0,
+            polled_futures: HashMap::new(),
+            completed_futures: HashMap::new(),
         }
     }
 }
 
-impl<Del, C> Future for Collect<Del, C>
+impl<'a, Del, C> Future for Collect<'a, Del, C>
 where
-    Del: Deluge,
+    Del: Deluge + Deluge<Item = C>,
     C: Default + Extend<Del::Item>,
 {
     type Output = C;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<C> {
         let mut this = self.as_mut().project();
+        while this.deluge.is_some() {
+            let deluge = this.deluge.as_mut().unwrap();
+            if let Some(future) = deluge.next() {
+                self.polled_futures.insert(*this.current_index, future);
+                *this.current_index += 1;
+            } else {
+                *this.deluge = None;
+            }
+        }
         // Need to iterate through all the promises. If a given promise is not ready yet,
         // let's poll it and continue with other promises
+        unimplemented!()
     }
 }
 
