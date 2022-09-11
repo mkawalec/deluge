@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1.20", features = ["full"] }
 pin-project = "1.0"
 futures = "0.3"
 
 #[dev-dependencies]
 more-asserts = "0.3"
+tokio = { version = "1.20", features = ["full"] }
