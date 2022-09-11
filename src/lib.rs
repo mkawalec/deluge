@@ -179,9 +179,12 @@ trait DelugeExt<'a>: Deluge<'a>
     }
 }
 
-// The idea is that we allocate new futures and the collect itself drives their evaluation
-// What about folds? Folds need to evaluate all the futures first...
-// Let's take a first approach in which we're just concurrent and the behavior is not configurable
+// TODO:
+// - add filter
+// - add filter_map
+// - add fold
+// - rearrange files
+
 
 #[cfg(test)]
 mod tests {
