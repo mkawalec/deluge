@@ -20,11 +20,10 @@ where I: Iterator + Send + 'a,
       <I as Iterator>::Item: Send + 'a,
 {
     type Item = I::Item;
-    type Output = impl Future<Output = Self::Item> + 'a;
+    type Output = impl Future<Output = Option<Self::Item>> + 'a;
 
     fn next(self: &mut Self) -> Option<Self::Output> {
         let item = self.iter.next();
-        // TODO: Why is this cast neccessary?
-        item.map(|item| future::ready(item))
+        item.map(|item| future::ready(Some(item)))
     }
 }

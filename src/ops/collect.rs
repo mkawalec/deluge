@@ -48,7 +48,9 @@ where
             let deluge: &'a mut Del = unsafe {
                 std::mem::transmute(this.deluge.as_mut().unwrap())
             };
-            if let Some(future) = deluge.next() {
+
+            let next = deluge.next();
+            if let Some(future) = next {
                 this.polled_futures.insert(*this.insert_idx, Box::pin(future));
                 *this.insert_idx += 1;
             } else {
@@ -62,7 +64,12 @@ where
             this.polled_futures.retain(|idx, fut| {
                 match Pin::new(fut).poll(cx) {
                     Poll::Ready(v) => {
-                        this.completed_futures.insert(*idx, v);
+                        // Drop the items that should be ignored on the floor.
+                        // The indexes in the `completed_futures` map don't need
+                        // to be contignous, it's enough for them to be monotonic
+                        if let Some(v) = v {
+                            this.completed_futures.insert(*idx, v);
+                        }
                         false
                     },
                     _ => true

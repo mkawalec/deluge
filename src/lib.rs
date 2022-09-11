@@ -1,5 +1,6 @@
 #![feature(associated_type_defaults)]
 #![feature(type_alias_impl_trait)]
+#![feature(const_trait_impl)]
 use std::future::Future;
 
 mod ops;
@@ -22,10 +23,11 @@ pub trait Deluge<'a>: Send + Sized
 
 
 // TODO:
-// - add filter
-// - add filter_map
-// - add fold
-// - rearrange files
+// - [ ] add filter
+// - [ ] add filter_map
+// - [ ] add fold
+// - [x] rearrange files
+// - [ ] Control the degree of concurrency on collect
 
 
 #[cfg(test)]
@@ -82,5 +84,19 @@ mod tests {
         result.into_iter()
             .enumerate()
             .for_each(|(idx, elem)| assert_eq!(idx, elem));
+    }
+
+    #[tokio::test]
+    async fn filter_works() { 
+        let result = iter(0..100)
+            .filter(|idx| async move {
+                idx % 2 == 0
+            })
+            .collect::<Vec<usize>>().await;
+
+        assert_eq!(result.len(), 50);
+        result.into_iter()
+            .enumerate()
+            .for_each(|(idx, elem)| assert_eq!(idx * 2, elem));
     }
 }
