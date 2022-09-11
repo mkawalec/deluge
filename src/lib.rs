@@ -1,3 +1,5 @@
+#![feature(associated_type_defaults)]
+#![feature(type_alias_impl_trait)]
 use core::pin::Pin;
 use std::future::{self, Future};
 use std::boxed::Box;
@@ -6,12 +8,14 @@ use futures::task::{Context, Poll};
 use std::marker::PhantomData;
 use pin_project::pin_project;
 use std::collections::HashMap;
+use std::future::Ready;
 
-pub trait Deluge: Send + Sized
+pub trait Deluge<'a>: Send + Sized
 {
     type Item: Send;
+    type Output: Future<Output = Self::Item> + 'a;
 
-    fn next(self: &mut Self) -> Option<BoxFuture<Self::Item>>;
+    fn next(self: &'a mut Self) -> Option<Self::Output>;
 }
 
 pub struct Iter<I> {
@@ -29,20 +33,20 @@ where I: IntoIterator
 }
 
 // TODO: This should also accept an iter to futures!
-impl<I> Deluge for Iter<I>
-where I: Iterator + Send,
-      <I as Iterator>::Item: Send,
+impl<'a, I> Deluge<'a> for Iter<I>
+where I: Iterator + Send + 'a,
+      <I as Iterator>::Item: Send + 'a,
 {
     type Item = I::Item;
+    type Output = impl Future<Output = Self::Item> + 'a;
 
-    fn next(self: &mut Self) -> Option<BoxFuture<Self::Item>> {
+    fn next(self: &mut Self) -> Option<Self::Output> {
         let item = self.iter.next();
         // TODO: Why is this cast neccessary?
-        item.map(|item| Box::pin(future::ready(item)) as BoxFuture<Self::Item>)
+        item.map(|item| future::ready(item))
     }
 }
 
-// TODO: Concurrent Map and filter
 pub struct Map<Del, F> {
     deluge: Del,
     f: F,
@@ -56,23 +60,69 @@ impl<Del, F> Map<Del, F>
     }
 }
 
-impl<Del, F, Fut> Deluge for Map<Del, F>
+impl<'a, InputDel, Fut, F> Deluge<'a> for Map<InputDel, F>
 where 
-    Del: Deluge,
-    F: FnMut(Del::Item) -> Fut + Send,
-    Fut: Future + Send,
+    InputDel: Deluge<'a> + 'a,
+    F: FnMut(InputDel::Item) -> Fut + Send + 'a,
+    Fut: Future + Send + 'a,
     <Fut as Future>::Output: Send,
 {
     type Item = Fut::Output;
+    type Output = impl Future<Output = Self::Item> + 'a;
 
-    fn next(self: &mut Self) -> Option<BoxFuture<Self::Item>> {
-        self.deluge.next().map(|item| Box::pin(async {
+    fn next(self: &'a mut Self) -> Option<Self::Output> {
+        self.deluge.next().map(|item| async {
             let item = item.await;
             (self.f)(item).await
-        }) as Pin<Box<dyn Future<Output = Self::Item> + Send>>)
+        })
     }
 }
 
+#[pin_project]
+pub struct Collect<'a, Del, C>
+where Del: Deluge<'a>,
+{
+    deluge: Option<Del>,
+    current_index: usize,
+    polled_futures: HashMap<usize, Del::Output>,
+    completed_futures: HashMap<usize, Del::Output>,
+    _collection: PhantomData<C>,
+}
+
+impl<'a, Del: Deluge<'a>, C: Default> Collect<'a, Del, C> 
+{
+    pub(crate) fn new(deluge: Del) -> Self {
+        Self {
+            deluge: Some(deluge),
+            current_index: 0,
+            polled_futures: HashMap::new(),
+            completed_futures: HashMap::new(),
+            _collection: PhantomData,
+        }
+    }
+}
+
+impl<'a, Del, C> Future for Collect<'a, Del, C>
+where
+    Del: Deluge<'a>,
+    C: Default + Extend<Del::Item>
+{
+    type Output = C;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<C> {
+        let mut this = self.as_mut().project();
+        while this.deluge.is_some() {
+            let deluge = this.deluge.as_mut().unwrap();
+            if let Some(future) = deluge.next() {
+                
+            }
+        }
+
+        unimplemented!();
+    }
+}
+
+/*
 #[pin_project]
 pub struct Collect<'a, Del, C> {
     deluge: Option<Del>,
@@ -81,17 +131,6 @@ pub struct Collect<'a, Del, C> {
     completed_futures: HashMap<usize, BoxFuture<'a, C>>,
 }
 
-impl<'a, Del: Deluge, C: Default> Collect<'a, Del, C> 
-{
-    pub(crate) fn new(deluge: Del) -> Self {
-        Self {
-            deluge: Some(deluge),
-            current_index: 0,
-            polled_futures: HashMap::new(),
-            completed_futures: HashMap::new(),
-        }
-    }
-}
 
 impl<'a, Del, C> Future for Collect<'a, Del, C>
 where
@@ -116,14 +155,17 @@ where
         unimplemented!()
     }
 }
+*/
 
+impl<'a, T: Sized> DelugeExt<'a> for T 
+where T: Deluge<'a>,
+{ }
 
-impl<T: Sized> DelugeExt for T where T: Deluge { }
-
-trait DelugeExt: Deluge {
+trait DelugeExt<'a>: Deluge<'a>
+{
     fn map<Fut, F>(self, f: F) -> Map<Self, F>
     where 
-        F: FnMut(Self::Item) -> Fut + Send,
+        F: FnMut(Self::Item) -> Fut + Send + 'a,
         Fut: Future + Send,
     {
         Map::new(self, f)
