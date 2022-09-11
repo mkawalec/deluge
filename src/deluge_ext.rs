@@ -4,7 +4,7 @@ use std::default::Default;
 use crate::deluge::Deluge;
 use crate::ops::*;
 
-impl<'a, T: Sized> DelugeExt<'a> for T 
+impl<'a, T> DelugeExt<'a> for T 
 where T: Deluge<'a>,
 { }
 
@@ -18,10 +18,9 @@ pub trait DelugeExt<'a>: Deluge<'a>
         Map::new(self, f)
     }
 
-    fn filter<Fut, F>(self, f: F) -> Filter<Self, F>
+    fn filter<F>(self, f: F) -> Filter<Self, F>
     where 
-        F: FnMut(&Self::Item) -> Fut + Send + 'a,
-        Fut: Future<Output = bool> + Send,
+        for<'b> F: XFn<'b, &'b Self::Item, bool> + Send + 'b,
     {
         Filter::new(self, f)
     }
