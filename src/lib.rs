@@ -9,6 +9,8 @@ use std::marker::PhantomData;
 use pin_project::pin_project;
 use std::collections::HashMap;
 use std::future::Ready;
+use std::default::Default;
+use tokio::time::{Duration, Instant};
 
 pub trait Deluge<'a>: Send + Sized
 {
@@ -83,9 +85,10 @@ pub struct Collect<'a, Del, C>
 where Del: Deluge<'a>,
 {
     deluge: Option<Del>,
-    current_index: usize,
-    polled_futures: HashMap<usize, Del::Output>,
-    completed_futures: HashMap<usize, Del::Output>,
+    insert_idx: usize,
+
+    polled_futures: HashMap<usize, Pin<Box<Del::Output>>>,
+    completed_futures: HashMap<usize, Del::Item>,
     _collection: PhantomData<C>,
 }
 
@@ -94,7 +97,8 @@ impl<'a, Del: Deluge<'a>, C: Default> Collect<'a, Del, C>
     pub(crate) fn new(deluge: Del) -> Self {
         Self {
             deluge: Some(deluge),
-            current_index: 0,
+            insert_idx: 0,
+
             polled_futures: HashMap::new(),
             completed_futures: HashMap::new(),
             _collection: PhantomData,
@@ -104,58 +108,57 @@ impl<'a, Del: Deluge<'a>, C: Default> Collect<'a, Del, C>
 
 impl<'a, Del, C> Future for Collect<'a, Del, C>
 where
-    Del: Deluge<'a>,
+    Del: Deluge<'a> + 'a,
     C: Default + Extend<Del::Item>
 {
     type Output = C;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<C> {
-        let mut this = self.as_mut().project();
+        let this = self.as_mut().project();
         while this.deluge.is_some() {
-            let deluge = this.deluge.as_mut().unwrap();
+            // Funky stuff, extending the lifetime of the inner future
+            let deluge: &'a mut Del = unsafe {
+                std::mem::transmute(this.deluge.as_mut().unwrap())
+            };
             if let Some(future) = deluge.next() {
-                
-            }
-        }
-
-        unimplemented!();
-    }
-}
-
-/*
-#[pin_project]
-pub struct Collect<'a, Del, C> {
-    deluge: Option<Del>,
-    current_index: usize,
-    polled_futures: HashMap<usize, BoxFuture<'a, C>>,
-    completed_futures: HashMap<usize, BoxFuture<'a, C>>,
-}
-
-
-impl<'a, Del, C> Future for Collect<'a, Del, C>
-where
-    Del: Deluge + Deluge<Item = C>,
-    C: Default + Extend<Del::Item>,
-{
-    type Output = C;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<C> {
-        let mut this = self.as_mut().project();
-        while this.deluge.is_some() {
-            let deluge = this.deluge.as_mut().unwrap();
-            if let Some(future) = deluge.next() {
-                self.polled_futures.insert(*this.current_index, future);
-                *this.current_index += 1;
+                this.polled_futures.insert(*this.insert_idx, Box::pin(future));
+                *this.insert_idx += 1;
             } else {
+                // Nothing more to pull from the deluge, we can proceed to poll the futures
                 *this.deluge = None;
             }
         }
-        // Need to iterate through all the promises. If a given promise is not ready yet,
-        // let's poll it and continue with other promises
-        unimplemented!()
+
+        // Drive all the futures, but don't wait for a result
+        if !this.polled_futures.is_empty() {
+            this.polled_futures.retain(|idx, fut| {
+                match Pin::new(fut).poll(cx) {
+                    Poll::Ready(v) => {
+                        this.completed_futures.insert(*idx, v);
+                        false
+                    },
+                    _ => true
+                }
+            });
+        } 
+        
+        if this.polled_futures.is_empty() {
+            let mut collected: Vec<(usize, Del::Item)> = this.completed_futures.drain()
+                .collect();
+            collected.sort_by_key(|(idx, _)| *idx);
+
+            let items = collected
+                .into_iter()
+                .map(|(_, el)| el);
+
+            let mut collection: C = Default::default();
+            collection.extend(items);
+            Poll::Ready(collection)
+        } else {
+            Poll::Pending
+        }
     }
 }
-*/
 
 impl<'a, T: Sized> DelugeExt<'a> for T 
 where T: Deluge<'a>,
@@ -170,6 +173,13 @@ trait DelugeExt<'a>: Deluge<'a>
     {
         Map::new(self, f)
     }
+
+    fn collect<C>(self) -> Collect<'a, Self, C>
+    where
+        C: Default + Extend<Self::Item>
+    {
+        Collect::new(self)
+    }
 }
 
 // The idea is that we allocate new futures and the collect itself drives their evaluation
@@ -179,6 +189,7 @@ trait DelugeExt<'a>: Deluge<'a>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use more_asserts::assert_lt;
 
     #[tokio::test]
     async fn we_can_create_iter() {
@@ -191,5 +202,42 @@ mod tests {
         iter([1, 2, 3, 4])
             .map(|x| async move { x * 2 });
         assert_eq!(2, 2);
+    }
+
+    #[tokio::test]
+    async fn we_can_collect() {
+        let result = iter([1, 2, 3, 4])
+            .collect::<Vec<usize>>().await;
+
+        assert_eq!(vec![1, 2, 3, 4], result);
+    }
+
+    #[tokio::test]
+    async fn we_can_mult() {
+        let result = iter([1, 2, 3, 4])
+            .map(|x| async move { x * 2 })
+            .collect::<Vec<usize>>().await;
+
+        assert_eq!(vec![2, 4, 6, 8], result);
+    }
+
+    #[tokio::test]
+    async fn we_wait_cuncurrently() {
+        let start = Instant::now();
+        let result = iter(0..100)
+            .map(|idx| async move { 
+                tokio::time::sleep(Duration::from_millis(100)).await;
+                idx
+            })
+            .collect::<Vec<usize>>().await;
+
+        assert_eq!(result.len(), 100);
+
+        let iteration_took = Instant::now() - start;
+        assert_lt!(iteration_took.as_millis(), 200);
+
+        result.into_iter()
+            .enumerate()
+            .for_each(|(idx, elem)| assert_eq!(idx, elem));
     }
 }
