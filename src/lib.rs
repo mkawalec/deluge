@@ -3,14 +3,11 @@
 use core::pin::Pin;
 use std::future::{self, Future};
 use std::boxed::Box;
-use futures::future::BoxFuture;
 use futures::task::{Context, Poll};
 use std::marker::PhantomData;
 use pin_project::pin_project;
 use std::collections::HashMap;
-use std::future::Ready;
 use std::default::Default;
-use tokio::time::{Duration, Instant};
 
 pub trait Deluge<'a>: Send + Sized
 {
@@ -190,10 +187,11 @@ trait DelugeExt<'a>: Deluge<'a>
 mod tests {
     use super::*;
     use more_asserts::assert_lt;
+    use tokio::time::{Duration, Instant};
 
     #[tokio::test]
     async fn we_can_create_iter() {
-        let del = iter([1, 2, 3]);
+        let _del = iter([1, 2, 3]);
         assert_eq!(2, 2);
     }
 
