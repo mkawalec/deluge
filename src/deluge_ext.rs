@@ -14,6 +14,7 @@ pub trait DelugeExt<'a>: Deluge<'a>
     where 
         F: FnMut(Self::Item) -> Fut + Send + 'a,
         Fut: Future + Send,
+        Self: Sized,
     {
         Map::new(self, f)
     }
@@ -21,13 +22,15 @@ pub trait DelugeExt<'a>: Deluge<'a>
     fn filter<F>(self, f: F) -> Filter<Self, F>
     where 
         for<'b> F: XFn<'b, &'b Self::Item, bool> + Send + 'b,
+        Self: Sized,
     {
         Filter::new(self, f)
     }
 
     fn collect<C>(self) -> Collect<'a, Self, C>
     where
-        C: Default + Extend<Self::Item>
+        C: Default + Extend<Self::Item>,
+        Self: Sized,
     {
         Collect::new(self)
     }

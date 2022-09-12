@@ -7,13 +7,14 @@ pub struct Filter<Del, F> {
 }
 
 
-impl<Del, F> Filter<Del, F> 
-{
+impl<'a, Del, F> Filter<Del, F> {
     pub(crate) fn new(deluge: Del, f: F) -> Self {
         Self { deluge, f }
     }
 }
 
+// This ensures that the lifetime of the input parameter 
+// is the same as the lifetime of the output future
 pub trait XFn<'a, I: 'a, O> {
   type Output: Future<Output = O> + 'a;
   fn call(&self, x: I) -> Self::Output;

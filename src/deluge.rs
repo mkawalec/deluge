@@ -1,6 +1,6 @@
 use std::future::Future;
 
-pub trait Deluge<'a>: Send + Sized
+pub trait Deluge<'a>
 {
     type Item: Send;
     type Output: Future<Output = Option<Self::Item>> + 'a;

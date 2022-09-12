@@ -13,14 +13,6 @@ pub use self::deluge::*;
 pub use deluge_ext::*;
 pub use iter::*;
 
-pub trait Deluge<'a>: Send + Sized
-{
-    type Item: Send;
-    type Output: Future<Output = Self::Item> + 'a;
-
-    fn next(self: &'a mut Self) -> Option<Self::Output>;
-}
-
 
 // TODO:
 // - [ ] add filter
