@@ -5,8 +5,11 @@ use futures::task::{Context, Poll};
 use std::marker::PhantomData;
 use pin_project::pin_project;
 use std::collections::HashMap;
+use std::sync::atomic::AtomicUsize;
+use std::collections::HashSet;
 use std::default::Default;
 use std::num::NonZeroUsize;
+use crossbeam::channel;
 use crate::deluge::Deluge;
 
 #[pin_project]
@@ -18,8 +21,7 @@ where Del: Deluge<'a>,
     worker_count: usize,
     worker_concurrency: Option<NonZeroUsize>,
 
-    polled_futures: HashMap<usize, Pin<Box<Del::Output>>>,
-    completed_futures: HashMap<usize, Del::Item>,
+    workers: Vec<Worker<Del::Output>>,
     _collection: PhantomData<C>,
 }
 
@@ -31,17 +33,34 @@ impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C>
         worker_concurrency: impl Into<Option<usize>>
     ) -> Self
     {
+        let worker_count = worker_count.into().unwrap_or_else(|| num_cpus::get());
+        let mut workers = Vec::new();
+        workers.reserve_exact(worker_count);
+
         Self {
             deluge: Some(deluge),
             insert_idx: 0,
-            worker_count: worker_count.into().unwrap_or_else(|| num_cpus::get()),
+            worker_count,
             worker_concurrency: worker_concurrency.into().and_then(NonZeroUsize::new),
 
-            polled_futures: HashMap::new(),
-            completed_futures: HashMap::new(),
+            workers,
             _collection: PhantomData,
         }
     }
+}
+
+struct Worker<Item> {
+    worker: Pin<Box<dyn Future<Output = ()>>>,
+    work_sender: channel::Sender<Item>,
+    active_jobs: AtomicUsize,
+}
+
+// TODO:
+// 1. Create evaluators
+// 2. Add work stealing
+
+async fn create_worker() {
+    unimplemented!()
 }
 
 impl<'a, Del, C> Future for CollectPar<'a, Del, C>
