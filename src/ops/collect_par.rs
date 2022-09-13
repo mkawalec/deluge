@@ -49,6 +49,11 @@ impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C>
     }
 }
 
+// Approach 
+// 1. Central mutexed container for jobs to be stolen from
+// 2. Each worker starts with worker_concurrency futures 
+//    and steals from the central place as needed
+
 struct Worker<Item> {
     worker: Pin<Box<dyn Future<Output = ()>>>,
     work_sender: channel::Sender<Item>,
