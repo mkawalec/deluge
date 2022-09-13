@@ -1,7 +1,6 @@
 #![feature(associated_type_defaults)]
 #![feature(type_alias_impl_trait)]
 #![feature(const_trait_impl)]
-use std::future::Future;
 
 mod ops;
 mod deluge;
