@@ -34,4 +34,16 @@ pub trait DelugeExt<'a>: Deluge<'a>
     {
         Collect::new(self, concurrency)
     }
+
+    fn collect_par<C>(
+        self,
+        worker_count: impl Into<Option<usize>>,
+        worker_concurrency: impl Into<Option<usize>>,
+    ) -> CollectPar<'a, Self, C>
+    where
+        C: Default + Extend<Self::Item>,
+        Self: Sized,
+    {
+        CollectPar::new(self, worker_count, worker_concurrency)
+    }
 }
