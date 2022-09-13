@@ -18,7 +18,8 @@ pub use iter::*;
 // - [ ] add filter_map
 // - [ ] add fold
 // - [x] rearrange files
-// - [ ] Control the degree of concurrency on collect
+// - [x] Control the degree of concurrency on collect
+// - [ ] Add a parallel collector
 
 
 #[cfg(test)]
