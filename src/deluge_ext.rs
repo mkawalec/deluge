@@ -27,11 +27,11 @@ pub trait DelugeExt<'a>: Deluge<'a>
         Filter::new(self, f)
     }
 
-    fn collect<C>(self) -> Collect<'a, Self, C>
+    fn collect<C>(self, concurrency: impl Into<Option<usize>>) -> Collect<'a, Self, C>
     where
         C: Default + Extend<Self::Item>,
         Self: Sized,
     {
-        Collect::new(self)
+        Collect::new(self, concurrency)
     }
 }
