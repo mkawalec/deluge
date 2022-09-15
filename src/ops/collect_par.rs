@@ -30,18 +30,18 @@ type SendError<T> = PhantomData<T>;
 
 type OutstandingFutures<'a, Del> = Arc<Mutex<BTreeMap<usize, Pin<Box<<Del as Deluge<'a>>::Output>>>>>;
 type CompletedItem<'a, Del> = (usize, Option<<Del as Deluge<'a>>::Item>);
+type Worker<'a> = Pin<Box<dyn Future<Output = ()> + 'a>>;
 
 #[pin_project]
 pub struct CollectPar<'a, Del, C>
 where Del: Deluge<'a>,
 {
     deluge: Option<Del>,
-    insert_idx: usize,
     worker_count: usize,
     worker_concurrency: Option<NonZeroUsize>,
 
-    workers: Vec<Worker>,
-    outstanding_futures: OutstandingFutures<'a, Del>,
+    workers: Vec<Worker<'a>>,
+    outstanding_futures: Option<OutstandingFutures<'a, Del>>,
     completed_items: BTreeMap<usize, Del::Item>,
     completed_channel: (mpsc::Sender<CompletedItem<'a, Del>>, mpsc::Receiver<CompletedItem<'a, Del>>),
     _collection: PhantomData<C>,
@@ -61,12 +61,11 @@ impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C>
 
         Self {
             deluge: Some(deluge),
-            insert_idx: 0,
             worker_count,
             worker_concurrency: worker_concurrency.into().and_then(NonZeroUsize::new),
 
             workers,
-            outstanding_futures: Arc::new(Mutex::new(BTreeMap::new())),
+            outstanding_futures: None,
             completed_items: BTreeMap::new(),
             // TODO: Only spawn the channel after we know how many items we have to eval
             completed_channel: mpsc::channel(12345),
@@ -80,11 +79,6 @@ impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C>
 // 2. Each worker starts with worker_concurrency futures 
 //    and steals from the central place as needed
 
-struct Worker {
-    pub worker: Pin<Box<dyn Future<Output = ()>>>,
-}
-
-struct WorkerId(pub usize);
 
 // We need it to proove to the compilter that our worker body is a `FnOnce`
 fn make_fn_once<'a, T, F: FnOnce() -> T>(f: F) -> F {
@@ -166,6 +160,49 @@ where
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<C> {
         let this = self.as_mut().project();
+
+        if this.deluge.is_some() {
+            let mut outstanding_futures = BTreeMap::new();
+            let mut insert_idx = 0;
+
+            // Load up all the futures
+            loop {
+                // Funky stuff, extending the lifetime of the inner future
+                let deluge: &'a mut Del = unsafe {
+                    std::mem::transmute(this.deluge.as_mut().unwrap())
+                };
+                let next = deluge.next();
+                if let Some(future) = next {
+                    outstanding_futures.insert(insert_idx, Box::pin(future));
+                    insert_idx += 1;
+                } else {
+                    *this.deluge = None;
+                    break;
+                }
+            }
+
+            let total_futures = outstanding_futures.len();
+            *this.outstanding_futures = Some(Arc::new(Mutex::new(outstanding_futures)));
+
+            // Spawn the workers
+            if this.workers.is_empty() {
+                let worker_concurrency = this.worker_concurrency
+                    .or_else(|| NonZeroUsize::new(total_futures / *this.worker_count))
+                    .unwrap_or_else(|| unsafe {
+                        NonZeroUsize::new_unchecked(1)
+                    });
+
+                for _ in 0..(*this.worker_count) {
+                    this.workers.push(create_worker::<'a, Del>(
+                        this.outstanding_futures.as_ref().unwrap().clone(),
+                        this.completed_channel.0.clone(),
+                        worker_concurrency
+                    ));
+                }
+            }
+        }
+        // Wait until the workers finish up
+
 
         todo!();
     }
