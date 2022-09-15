@@ -2,15 +2,34 @@ use core::pin::Pin;
 use std::future::Future;
 use std::boxed::Box;
 use futures::task::{Context, Poll};
+use futures::poll;
 use std::marker::PhantomData;
 use pin_project::pin_project;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 use std::sync::atomic::AtomicUsize;
 use std::collections::HashSet;
 use std::default::Default;
 use std::num::NonZeroUsize;
-use crossbeam::channel;
+use std::sync::Arc;
 use crate::deluge::Deluge;
+
+#[cfg(feature = "tokio")]
+type Mutex<T> = tokio::sync::Mutex<T>;
+#[cfg(feature = "tokio")]
+use tokio::sync::mpsc;
+#[cfg(feature = "tokio")]
+type SendError<T> = tokio::sync::mpsc::error::SendError<T>;
+
+#[cfg(feature = "async-std")]
+type Mutex<T> = async_std::sync::Mutex<T>;
+#[cfg(feature = "async-std")]
+use async_std::sync as mpsc;
+#[cfg(feature = "async-std")]
+type SendError<T> = PhantomData<T>;
+
+
+type OutstandingFutures<'a, Del> = Arc<Mutex<BTreeMap<usize, Pin<Box<<Del as Deluge<'a>>::Output>>>>>;
+type CompletedItem<'a, Del> = (usize, Option<<Del as Deluge<'a>>::Item>);
 
 #[pin_project]
 pub struct CollectPar<'a, Del, C>
@@ -21,7 +40,10 @@ where Del: Deluge<'a>,
     worker_count: usize,
     worker_concurrency: Option<NonZeroUsize>,
 
-    workers: Vec<Worker<Del::Output>>,
+    workers: Vec<Worker>,
+    outstanding_futures: OutstandingFutures<'a, Del>,
+    completed_items: BTreeMap<usize, Del::Item>,
+    completed_channel: (mpsc::Sender<CompletedItem<'a, Del>>, mpsc::Receiver<CompletedItem<'a, Del>>),
     _collection: PhantomData<C>,
 }
 
@@ -44,6 +66,10 @@ impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C>
             worker_concurrency: worker_concurrency.into().and_then(NonZeroUsize::new),
 
             workers,
+            outstanding_futures: Arc::new(Mutex::new(BTreeMap::new())),
+            completed_items: BTreeMap::new(),
+            // TODO: Only spawn the channel after we know how many items we have to eval
+            completed_channel: mpsc::channel(12345),
             _collection: PhantomData,
         }
     }
@@ -54,18 +80,81 @@ impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C>
 // 2. Each worker starts with worker_concurrency futures 
 //    and steals from the central place as needed
 
-struct Worker<Item> {
-    worker: Pin<Box<dyn Future<Output = ()>>>,
-    work_sender: channel::Sender<Item>,
-    active_jobs: AtomicUsize,
+struct Worker {
+    pub worker: Pin<Box<dyn Future<Output = ()>>>,
+}
+
+struct WorkerId(pub usize);
+
+// We need it to proove to the compilter that our worker body is a `FnOnce`
+fn make_fn_once<'a, T, F: FnOnce() -> T>(f: F) -> F {
+    f
 }
 
 // TODO:
 // 1. Create evaluators
 // 2. Add work stealing
 
-async fn create_worker() {
-    unimplemented!()
+// No need to provide initial work, the worker should pull
+// it from `outstanding_futures` by itself
+fn create_worker<'a, Del: Deluge<'a> + 'a>(
+    outstanding_futures: OutstandingFutures<'a, Del>,
+    completed_channel: mpsc::Sender<CompletedItem<'a, Del>>,
+    concurrency: NonZeroUsize,
+) -> Pin<Box<dyn Future<Output = ()> + 'a>>
+{
+    Box::pin(async move {
+        let mut evaluated_futures: BTreeMap<usize, Pin<Box<Del::Output>>> = BTreeMap::new();
+
+        let run_worker = make_fn_once(|| async {
+            let mut more_work_available = true;
+            loop {
+                // Load up on work if we aren't full and we expect more work to show up
+                if evaluated_futures.len() < concurrency.get() && more_work_available {
+                    let mut outstanding_futures = outstanding_futures.lock().await;
+                    while evaluated_futures.len() < concurrency.get() && !outstanding_futures.is_empty() {
+                        if let Some((idx, fut)) = outstanding_futures.pop_first() {
+                            evaluated_futures.insert(idx, fut);
+                        }
+                    }
+
+                    if outstanding_futures.is_empty() {
+                        more_work_available = false;
+                    }
+                }
+
+                // We failed to find any work to perform, shut down gracefully
+                if evaluated_futures.is_empty() {
+                    break;
+                }
+
+                for (idx, fut) in evaluated_futures.iter_mut() {
+                    #[cfg(feature = "tokio")]
+                    match poll!(fut) {
+                        Poll::Ready(v) => completed_channel.send((*idx, v)).await?,
+                        _ => (),
+                    }
+
+                    #[cfg(feature = "async-std")]
+                    match poll!(fut) {
+                        Poll::Ready(v) => completed_channel.send((idx, fut)).await,
+                        _ => (),
+                    }
+                }
+            }
+
+            Ok::<(), SendError<CompletedItem<'a, Del>>>(())
+        });
+
+        if let Err(_e) = run_worker().await {
+            // Return unevaluated futures into the pile
+            let mut outstanding_futures = outstanding_futures.lock().await;
+            evaluated_futures.into_iter()
+                .for_each(|(idx, fut)| {
+                    outstanding_futures.insert(idx, fut);
+            });
+        }
+    })
 }
 
 impl<'a, Del, C> Future for CollectPar<'a, Del, C>
@@ -78,6 +167,6 @@ where
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<C> {
         let this = self.as_mut().project();
 
-        unimplemented!();
+        todo!();
     }
 }

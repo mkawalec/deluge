@@ -3,12 +3,20 @@ name = "deluge"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["tokio"]
+parallel = []
+tokio = ["parallel", "dep:tokio"]
+async-std = ["parallel", "dep:async-std"]
+
 [dependencies]
-crossbeam = "0.8"
 pin-project = "1.0"
 futures = "0.3"
 num_cpus = "1.13"
+more-asserts = "0.3"
+tokio = { version = "1.20", features = ["sync"], optional = true }
+async-std = { version = "1.12", optional = true }
 
-#[dev-dependencies]
+[dev-dependencies]
 more-asserts = "0.3"
 tokio = { version = "1.20", features = ["full"] }

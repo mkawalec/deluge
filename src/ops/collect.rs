@@ -18,7 +18,7 @@ where Del: Deluge<'a>,
     concurrency: Option<NonZeroUsize>,
 
     polled_futures: HashMap<usize, Pin<Box<Del::Output>>>,
-    completed_futures: HashMap<usize, Del::Item>,
+    completed_items: HashMap<usize, Del::Item>,
     _collection: PhantomData<C>,
 }
 
@@ -31,7 +31,7 @@ impl<'a, Del: Deluge<'a>, C: Default> Collect<'a, Del, C>
             concurrency: concurrency.into().and_then(NonZeroUsize::new),
 
             polled_futures: HashMap::new(),
-            completed_futures: HashMap::new(),
+            completed_items: HashMap::new(),
             _collection: PhantomData,
         }
     }
@@ -81,10 +81,10 @@ where
                     match Pin::new(fut).poll(cx) {
                         Poll::Ready(v) => {
                             // Drop the items that should be ignored on the floor.
-                            // The indexes in the `completed_futures` map don't need
+                            // The indexes in the `completed_items` map don't need
                             // to be contignous, it's enough for them to be monotonic
                             if let Some(v) = v {
-                                this.completed_futures.insert(*idx, v);
+                                this.completed_items.insert(*idx, v);
                             }
                             false
                         },
@@ -104,8 +104,9 @@ where
         }
 
         // If all futures have finished, collect the results into the output
+        // TODO: Use an already ordered map to not require the sorting step here
         if this.polled_futures.is_empty() && this.deluge.is_none() {
-            let mut collected: Vec<(usize, Del::Item)> = this.completed_futures.drain()
+            let mut collected: Vec<(usize, Del::Item)> = this.completed_items.drain()
                 .collect();
             collected.sort_by_key(|(idx, _)| *idx);
 

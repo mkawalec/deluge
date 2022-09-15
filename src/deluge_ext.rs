@@ -35,6 +35,7 @@ pub trait DelugeExt<'a>: Deluge<'a>
         Collect::new(self, concurrency)
     }
 
+    #[cfg(feature = "parallel")]
     fn collect_par<C>(
         self,
         worker_count: impl Into<Option<usize>>,
