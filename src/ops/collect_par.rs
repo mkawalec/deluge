@@ -42,7 +42,7 @@ where Del: Deluge<'a>,
 
     workers: Vec<Worker<'a>>,
     outstanding_futures: Option<OutstandingFutures<'a, Del>>,
-    completed_items: BTreeMap<usize, Del::Item>,
+    completed_items: Option<BTreeMap<usize, Del::Item>>,
     completed_channel: (mpsc::Sender<CompletedItem<'a, Del>>, mpsc::Receiver<CompletedItem<'a, Del>>),
     _collection: PhantomData<C>,
 }
@@ -66,7 +66,7 @@ impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C>
 
             workers,
             outstanding_futures: None,
-            completed_items: BTreeMap::new(),
+            completed_items: Some(BTreeMap::new()),
             // TODO: Only spawn the channel after we know how many items we have to eval
             completed_channel: mpsc::channel(12345),
             _collection: PhantomData,
@@ -184,7 +184,7 @@ where
             let total_futures = outstanding_futures.len();
             *this.outstanding_futures = Some(Arc::new(Mutex::new(outstanding_futures)));
 
-            // Spawn the workers
+            // Spawn workers
             if this.workers.is_empty() {
                 let worker_concurrency = this.worker_concurrency
                     .or_else(|| NonZeroUsize::new(total_futures / *this.worker_count))
@@ -202,7 +202,27 @@ where
             }
         }
 
-        // Wait until the workers finish up
-        todo!();
+        // Drive the workers
+        this.workers.retain_mut(|worker| {
+            match Pin::new(worker).poll(cx) {
+                Poll::Ready(_) => false,
+                _ => true
+            }
+        });
+
+        // Drain the compelted channel
+        while let Ok((idx, Some(v))) = this.completed_channel.1.try_recv() {
+            this.completed_items.as_mut().unwrap().insert(idx, v);
+        }
+
+        if this.workers.is_empty() {
+            let mut collection: C = Default::default();
+            let items = this.completed_items.take().unwrap().into_values();
+            collection.extend(items);
+
+            Poll::Ready(collection)
+        } else {
+            Poll::Pending
+        }
     }
 }
