@@ -9,7 +9,6 @@ At the same time all the complexity is hidden away from the users behind well kn
 ### TODO:
 
 - [x] Don't require `collect` to construct an intermediate vector
-- [ ] Drop a `Default` requirement for the collect collection
 - [ ] Add `fold`
 - [ ] Figure out why `filter` doesn't want to compile in tests
 - [ ] Add `filter_map`
