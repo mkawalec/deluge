@@ -2,6 +2,7 @@ use core::pin::Pin;
 use std::future::Future;
 use std::boxed::Box;
 use futures::task::{Context, Poll};
+use futures::stream::{FuturesUnordered, StreamExt};
 use futures::poll;
 use std::marker::PhantomData;
 use pin_project::pin_project;
@@ -74,6 +75,7 @@ impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C>
     }
 }
 
+
 // Approach 
 // 1. Central mutexed container for jobs to be stolen from
 // 2. Each worker starts with worker_concurrency futures 
@@ -97,8 +99,10 @@ fn create_worker<'a, Del: Deluge<'a> + 'a>(
     concurrency: NonZeroUsize,
 ) -> Pin<Box<dyn Future<Output = ()> + 'a>>
 {
+    println!("Creating a worker");
     Box::pin(async move {
-        let mut evaluated_futures: BTreeMap<usize, Pin<Box<Del::Output>>> = BTreeMap::new();
+        println!("Worker is alive");
+        let mut evaluated_futures = FuturesUnordered::new();
 
         let run_worker = make_fn_once(|| async {
             let mut more_work_available = true;
@@ -108,7 +112,7 @@ fn create_worker<'a, Del: Deluge<'a> + 'a>(
                     let mut outstanding_futures = outstanding_futures.lock().await;
                     while evaluated_futures.len() < concurrency.get() && !outstanding_futures.is_empty() {
                         if let Some((idx, fut)) = outstanding_futures.pop_first() {
-                            evaluated_futures.insert(idx, fut);
+                            evaluated_futures.push(IndexedFuture::new(idx, fut));
                         }
                     }
 
@@ -117,22 +121,22 @@ fn create_worker<'a, Del: Deluge<'a> + 'a>(
                     }
                 }
 
-                // We failed to find any work to perform, shut down gracefully
-                if evaluated_futures.is_empty() {
-                    break;
-                }
-
-                for (idx, fut) in evaluated_futures.iter_mut() {
+                if let Some(result) = evaluated_futures.next().await {
                     #[cfg(feature = "tokio")]
-                    match poll!(fut) {
-                        Poll::Ready(v) => completed_channel.send((*idx, v)).await?,
-                        _ => (),
-                    }
+                    completed_channel.send(result).await?;
 
                     #[cfg(feature = "async-std")]
-                    match poll!(fut) {
-                        Poll::Ready(v) => completed_channel.send((idx, fut)).await,
-                        _ => (),
+                    completed_channel.send(result).await;
+                } else {
+                    // If there is no more results to fetch, double check if nothing 
+                    // was returned into `outstanding_futures` by another crashing worker.
+                    // If it is still empty, terminate.
+                    let outstanding_futures = outstanding_futures.lock().await;
+                    if !outstanding_futures.is_empty() {
+                        more_work_available = true;
+                        continue;
+                    } else {
+                        break;
                     }
                 }
             }
@@ -144,8 +148,8 @@ fn create_worker<'a, Del: Deluge<'a> + 'a>(
             // Return unevaluated futures into the pile
             let mut outstanding_futures = outstanding_futures.lock().await;
             evaluated_futures.into_iter()
-                .for_each(|(idx, fut)| {
-                    outstanding_futures.insert(idx, fut);
+                .for_each(|fut| {
+                    outstanding_futures.insert(fut.index(), fut.into_future());
             });
         }
     })
@@ -223,6 +227,45 @@ where
             Poll::Ready(collection)
         } else {
             Poll::Pending
+        }
+    }
+}
+
+// A helper type allowing us to have a future with a synchronously available index on it
+#[pin_project]
+pub struct IndexedFuture<Fut> {
+    future: Pin<Box<Fut>>,
+    index: usize,
+}
+
+impl<Fut: Future> IndexedFuture<Fut> {
+    fn new(index: usize, future: Pin<Box<Fut>>) -> Self {
+        IndexedFuture {
+            future,
+            index
+        }
+    }
+
+    fn index(&self) -> usize {
+       self.index 
+    }
+
+    fn into_future(self) -> Pin<Box<Fut>> {
+        self.future
+    }
+}
+
+impl<Fut> Future for IndexedFuture<Fut>
+where Fut: Future
+{
+    type Output = (usize, Fut::Output); 
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.as_mut().project();
+
+        match Pin::new(this.future).poll(cx) {
+            Poll::Ready(result) => Poll::Ready((*this.index, result)),
+            _ => Poll::Pending,
         }
     }
 }

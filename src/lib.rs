@@ -96,6 +96,24 @@ mod tests {
         assert_eq!(result.len(), 15);
     }
 
+    #[tokio::test]
+    async fn parallel_test() {
+        let start = Instant::now();
+        let result = iter(0..150)
+            .map(|idx| async move { 
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                idx
+            })
+            .collect_par::<Vec<usize>>(10, 5).await;
+
+        let iteration_took = Instant::now() - start;
+        assert_gt!(iteration_took.as_millis(), 150);
+        assert_lt!(iteration_took.as_millis(), 200);
+        println!("{:?}", iteration_took);
+
+        assert_eq!(result.len(), 150);
+    }
+
     // Filter doesn't want to build, I have no idea why.
     // Let's move to augmenting the collector first
     /*
