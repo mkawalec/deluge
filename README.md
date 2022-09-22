@@ -13,5 +13,5 @@ At the same time all the complexity is hidden away from the users behind well kn
 - [ ] Figure out why `filter` doesn't want to compile in tests
 - [ ] Add `filter_map`
 - [ ] Document
-- [ ] Create proper, not timeing-based, correctness tests
 - [ ] Benchmark
+- [ ] Create proper, not timing-based, correctness tests
