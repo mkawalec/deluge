@@ -4,7 +4,7 @@ use std::boxed::Box;
 use futures::task::{Context, Poll};
 use std::marker::PhantomData;
 use pin_project::pin_project;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 use std::default::Default;
 use std::num::NonZeroUsize;
 use crate::deluge::Deluge;
