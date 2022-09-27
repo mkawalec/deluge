@@ -1,17 +1,14 @@
-use std::future::Future;
 use std::default::Default;
+use std::future::Future;
 
 use crate::deluge::Deluge;
 use crate::ops::*;
 
-impl<'a, T> DelugeExt<'a> for T 
-where T: Deluge<'a>,
-{ }
+impl<'a, T> DelugeExt<'a> for T where T: Deluge<'a> {}
 
-pub trait DelugeExt<'a>: Deluge<'a>
-{
+pub trait DelugeExt<'a>: Deluge<'a> {
     fn map<Fut, F>(self, f: F) -> Map<Self, F>
-    where 
+    where
         F: FnMut(Self::Item) -> Fut + Send + 'a,
         Fut: Future + Send,
         Self: Sized,
@@ -20,14 +17,19 @@ pub trait DelugeExt<'a>: Deluge<'a>
     }
 
     fn filter<F>(self, f: F) -> Filter<Self, F>
-    where 
+    where
         for<'b> F: XFn<'b, &'b Self::Item, bool> + Send + 'b,
         Self: Sized,
     {
         Filter::new(self, f)
     }
 
-    fn fold<Acc, F, Fut>(self, concurrency: impl Into<Option<usize>>, acc: Acc, f: F) -> Fold<'a, Self, Acc, F, Fut>
+    fn fold<Acc, F, Fut>(
+        self,
+        concurrency: impl Into<Option<usize>>,
+        acc: Acc,
+        f: F,
+    ) -> Fold<'a, Self, Acc, F, Fut>
     where
         F: FnMut(Acc, Self::Item) -> Fut + Send + 'a,
         Fut: Future<Output = Acc> + Send + 'a,

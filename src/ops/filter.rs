@@ -1,11 +1,10 @@
-use std::future::Future;
 use crate::deluge::Deluge;
+use std::future::Future;
 
 pub struct Filter<Del, F> {
     deluge: Del,
     f: F,
 }
-
 
 impl<'a, Del, F> Filter<Del, F> {
     pub(crate) fn new(deluge: Del, f: F) -> Self {
@@ -13,22 +12,22 @@ impl<'a, Del, F> Filter<Del, F> {
     }
 }
 
-// This ensures that the lifetime of the input parameter 
+// This ensures that the lifetime of the input parameter
 // is the same as the lifetime of the output future
 pub trait XFn<'a, I: 'a, O> {
-  type Output: Future<Output = O> + 'a;
-  fn call(&self, x: I) -> Self::Output;
+    type Output: Future<Output = O> + 'a;
+    fn call(&self, x: I) -> Self::Output;
 }
 
 impl<'a, I: 'a, O, F, Fut> XFn<'a, I, O> for F
 where
-  F: Fn(I) -> Fut,
-  Fut: Future<Output = O> + 'a,
+    F: Fn(I) -> Fut,
+    Fut: Future<Output = O> + 'a,
 {
-  type Output = Fut;
-  fn call(&self, x: I) -> Fut {
-      self(x)
-  }
+    type Output = Fut;
+    fn call(&self, x: I) -> Fut {
+        self(x)
+    }
 }
 
 impl<'a, InputDel, F> Deluge<'a> for Filter<InputDel, F>

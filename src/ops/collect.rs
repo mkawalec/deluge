@@ -1,17 +1,18 @@
-use core::pin::Pin;
-use std::future::Future;
-use std::boxed::Box;
-use futures::task::{Context, Poll};
-use std::marker::PhantomData;
-use pin_project::pin_project;
-use std::collections::{HashMap, BTreeMap};
-use std::default::Default;
-use std::num::NonZeroUsize;
 use crate::deluge::Deluge;
+use core::pin::Pin;
+use futures::task::{Context, Poll};
+use pin_project::pin_project;
+use std::boxed::Box;
+use std::collections::{BTreeMap, HashMap};
+use std::default::Default;
+use std::future::Future;
+use std::marker::PhantomData;
+use std::num::NonZeroUsize;
 
 #[pin_project]
 pub struct Collect<'a, Del, C>
-where Del: Deluge<'a>,
+where
+    Del: Deluge<'a>,
 {
     deluge: Option<Del>,
     insert_idx: usize,
@@ -22,8 +23,7 @@ where Del: Deluge<'a>,
     _collection: PhantomData<C>,
 }
 
-impl<'a, Del: Deluge<'a>, C: Default> Collect<'a, Del, C> 
-{
+impl<'a, Del: Deluge<'a>, C: Default> Collect<'a, Del, C> {
     pub(crate) fn new(deluge: Del, concurrency: impl Into<Option<usize>>) -> Self {
         Self {
             deluge: Some(deluge),
@@ -40,7 +40,7 @@ impl<'a, Del: Deluge<'a>, C: Default> Collect<'a, Del, C>
 impl<'a, Del, C> Future for Collect<'a, Del, C>
 where
     Del: Deluge<'a> + 'a,
-    C: Default + Extend<Del::Item>
+    C: Default + Extend<Del::Item>,
 {
     type Output = C;
 
@@ -56,14 +56,14 @@ where
                 };
 
                 // Funky stuff, extending the lifetime of the inner future
-                let deluge: &'a mut Del = unsafe {
-                    std::mem::transmute(this.deluge.as_mut().unwrap())
-                };
+                let deluge: &'a mut Del =
+                    unsafe { std::mem::transmute(this.deluge.as_mut().unwrap()) };
 
                 if this.polled_futures.len() < concurrency_limit {
                     let next = deluge.next();
                     if let Some(future) = next {
-                        this.polled_futures.insert(*this.insert_idx, Box::pin(future));
+                        this.polled_futures
+                            .insert(*this.insert_idx, Box::pin(future));
                         *this.insert_idx += 1;
                     } else {
                         // Nothing more to pull from the deluge, we can proceed to poll the futures
@@ -89,11 +89,11 @@ where
                                 }
                             }
                             false
-                        },
-                        _ => true
+                        }
+                        _ => true,
                     }
                 });
-            } 
+            }
 
             // If all the polled futures were immediately evaluated
             // and we can still evaluate something more, load more items to evaluate
@@ -107,10 +107,7 @@ where
 
         // If all futures have finished, collect the results into the output
         if this.polled_futures.is_empty() && this.deluge.is_none() {
-            let items = this.completed_items 
-                .take()
-                .unwrap()
-                .into_values();
+            let items = this.completed_items.take().unwrap().into_values();
 
             let mut collection: C = Default::default();
             collection.extend(items);

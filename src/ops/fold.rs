@@ -1,19 +1,20 @@
-use std::future::Future;
-use core::pin::Pin;
 use crate::deluge::Deluge;
-use std::boxed::Box;
+use core::pin::Pin;
 use futures::task::{Context, Poll};
-use std::marker::PhantomData;
 use pin_project::pin_project;
-use std::collections::{HashMap, BTreeMap};
+use std::boxed::Box;
+use std::collections::{BTreeMap, HashMap};
 use std::default::Default;
+use std::future::Future;
+use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 
 use super::collect::Collect;
 
 #[pin_project]
 pub struct Fold<'a, Del, Acc, F, Fut>
-where Del: Deluge<'a>,
+where
+    Del: Deluge<'a>,
     F: FnMut(Acc, Del::Item) -> Fut + Send + 'a,
     Fut: Future<Output = Acc> + Send + 'a,
 {
@@ -29,14 +30,14 @@ where Del: Deluge<'a>,
     _acc_fut: PhantomData<Fut>,
 }
 
-
-impl<'a, Del, Acc, F, Fut> Fold<'a, Del, Acc, F, Fut> 
-where Del: Deluge<'a>,
+impl<'a, Del, Acc, F, Fut> Fold<'a, Del, Acc, F, Fut>
+where
+    Del: Deluge<'a>,
     F: FnMut(Acc, Del::Item) -> Fut + Send + 'a,
     Fut: Future<Output = Acc> + Send + 'a,
 {
     pub(crate) fn new(deluge: Del, concurrency: impl Into<Option<usize>>, acc: Acc, f: F) -> Self {
-        Self { 
+        Self {
             deluge: Some(deluge),
             collect_future: None,
             collected_result: None,
@@ -46,13 +47,13 @@ where Del: Deluge<'a>,
 
             acc: Some(acc),
             f,
-            _acc_fut: PhantomData
+            _acc_fut: PhantomData,
         }
     }
 }
 
 impl<'a, InputDel, Acc, F, Fut> Future for Fold<'a, InputDel, Acc, F, Fut>
-where 
+where
     InputDel: Deluge<'a> + 'a,
     F: FnMut(Acc, InputDel::Item) -> Fut + Send + 'a,
     Fut: Future<Output = Acc> + Send + 'a,
@@ -71,7 +72,7 @@ where
                 Poll::Ready(v) => {
                     *this.collected_result = Some(v.into_iter());
                     *this.collect_future = None;
-                },
+                }
                 _ => return Poll::Pending,
             }
         }
@@ -88,11 +89,11 @@ where
 
             if let Some(current_el_future) = this.current_el_future.as_mut() {
                 // We're manually pin-projecting since we need to project into an Option
-                match unsafe {Pin::new_unchecked(current_el_future)}.poll(cx) {
+                match unsafe { Pin::new_unchecked(current_el_future) }.poll(cx) {
                     Poll::Ready(v) => {
                         *this.current_el_future = None;
                         *this.acc = Some(v);
-                    },
+                    }
                     _ => return Poll::Pending,
                 }
             };

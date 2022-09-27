@@ -10,12 +10,12 @@ tokio = ["parallel", "dep:tokio"]
 async-std = ["parallel", "dep:async-std"]
 
 [dependencies]
-pin-project = "1.0"
-futures = "0.3"
-num_cpus = "1.13"
-more-asserts = "0.3"
-tokio = { version = "1.20", features = ["sync"], optional = true }
 async-std = { version = "1.12", optional = true }
+futures = "0.3"
+more-asserts = "0.3"
+num_cpus = "1.13"
+pin-project = "1.0"
+tokio = { version = "1.20", features = ["sync"], optional = true }
 
 [dev-dependencies]
 more-asserts = "0.3"

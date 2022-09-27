@@ -9,7 +9,7 @@ At the same time all the complexity is hidden away from the users behind well kn
 ### TODO:
 
 - [x] Don't require `collect` to construct an intermediate vector
-- [ ] Add `fold`
+- [x] Add `fold`
 - [ ] `fold_par`
 - [ ] Run tests for async-std as well
 - [ ] Linting

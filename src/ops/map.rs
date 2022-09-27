@@ -1,21 +1,19 @@
-use std::future::Future;
 use crate::deluge::Deluge;
+use std::future::Future;
 
 pub struct Map<Del, F> {
     deluge: Del,
     f: F,
 }
 
-
-impl<Del, F> Map<Del, F> 
-{
+impl<Del, F> Map<Del, F> {
     pub(crate) fn new(deluge: Del, f: F) -> Self {
         Self { deluge, f }
     }
 }
 
 impl<'a, InputDel, Fut, F> Deluge<'a> for Map<InputDel, F>
-where 
+where
     InputDel: Deluge<'a> + 'a,
     F: FnMut(InputDel::Item) -> Fut + Send + 'a,
     Fut: Future + Send + 'a,
