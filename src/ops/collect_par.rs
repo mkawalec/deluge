@@ -203,10 +203,7 @@ where
 
         // Drive the workers
         this.workers
-            .retain_mut(|worker| match Pin::new(worker).poll(cx) {
-                Poll::Ready(_) => false,
-                _ => true,
-            });
+            .retain_mut(|worker| !matches!(Pin::new(worker).poll(cx), Poll::Ready(_)));
 
         // Drain the compelted channel
         while let Ok((idx, Some(v))) = this.completed_channel.1.try_recv() {
