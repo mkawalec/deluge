@@ -27,6 +27,15 @@ pub trait DelugeExt<'a>: Deluge<'a>
         Filter::new(self, f)
     }
 
+    fn fold<Acc, F, Fut>(self, concurrency: impl Into<Option<usize>>, acc: Acc, f: F) -> Fold<'a, Self, Acc, F, Fut>
+    where
+        F: FnMut(Acc, Self::Item) -> Fut + Send + 'a,
+        Fut: Future<Output = Acc> + Send + 'a,
+        Self: Sized,
+    {
+        Fold::new(self, concurrency, acc, f)
+    }
+
     fn collect<C>(self, concurrency: impl Into<Option<usize>>) -> Collect<'a, Self, C>
     where
         C: Default + Extend<Self::Item>,

@@ -2,6 +2,7 @@
 #![feature(type_alias_impl_trait)]
 #![feature(const_trait_impl)]
 #![feature(map_first_last)]
+#![feature(let_chains)]
 
 mod ops;
 mod deluge;
@@ -94,6 +95,24 @@ mod tests {
         assert_lt!(iteration_took.as_millis(), 200);
 
         assert_eq!(result.len(), 15);
+    }
+
+    #[tokio::test]
+    async fn concurrent_fold() {
+        let start = Instant::now();
+        let result = iter(0..100)
+            .map(|idx| async move { 
+                tokio::time::sleep(Duration::from_millis(100)).await;
+                idx
+            })
+            .fold(None, 0, |acc, idx| async move { 
+                acc + idx
+            }).await;
+
+        let iteration_took = Instant::now() - start;
+        assert_lt!(iteration_took.as_millis(), 200);
+
+        assert_eq!(result, 4950);
     }
 
     #[tokio::test]
