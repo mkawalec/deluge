@@ -21,7 +21,7 @@ type SendError<T> = tokio::sync::mpsc::error::SendError<T>;
 #[cfg(feature = "async-std")]
 type Mutex<T> = async_std::sync::Mutex<T>;
 #[cfg(feature = "async-std")]
-use async_std::sync as mpsc;
+use async_std::channel as mpsc;
 #[cfg(feature = "async-std")]
 type SendError<T> = PhantomData<T>;
 
@@ -42,10 +42,10 @@ where
     workers: Vec<Worker<'a>>,
     outstanding_futures: Option<OutstandingFutures<'a, Del>>,
     completed_items: Option<BTreeMap<usize, Del::Item>>,
-    completed_channel: (
+    completed_channel: Option<(
         mpsc::Sender<CompletedItem<'a, Del>>,
         mpsc::Receiver<CompletedItem<'a, Del>>,
-    ),
+    )>,
     _collection: PhantomData<C>,
 }
 
@@ -67,8 +67,8 @@ impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C> {
             workers,
             outstanding_futures: None,
             completed_items: Some(BTreeMap::new()),
-            // TODO: Only spawn the channel after we know how many items we have to eval
-            completed_channel: mpsc::channel(12345),
+            // Only spawn the channel after we know how many items we have to eval
+            completed_channel: None,
             _collection: PhantomData,
         }
     }
@@ -182,6 +182,7 @@ where
             }
 
             let total_futures = outstanding_futures.len();
+            *this.completed_channel = Some(mpsc::channel(total_futures));
             *this.outstanding_futures = Some(Arc::new(Mutex::new(outstanding_futures)));
 
             // Spawn workers
@@ -194,7 +195,7 @@ where
                 for _ in 0..(*this.worker_count) {
                     this.workers.push(create_worker::<'a, Del>(
                         this.outstanding_futures.as_ref().unwrap().clone(),
-                        this.completed_channel.0.clone(),
+                        this.completed_channel.as_ref().unwrap().0.clone(),
                         worker_concurrency,
                     ));
                 }
@@ -206,7 +207,7 @@ where
             .retain_mut(|worker| !matches!(Pin::new(worker).poll(cx), Poll::Ready(_)));
 
         // Drain the compelted channel
-        while let Ok((idx, Some(v))) = this.completed_channel.1.try_recv() {
+        while let Ok((idx, Some(v))) = this.completed_channel.as_mut().unwrap().1.try_recv() {
             this.completed_items.as_mut().unwrap().insert(idx, v);
         }
 

@@ -26,7 +26,7 @@ pub use ops::*;
 mod tests {
     use super::*;
     use more_asserts::{assert_gt, assert_lt};
-    use tokio::time::{Duration, Instant};
+    use std::time::{Duration, Instant};
 
     #[tokio::test]
     async fn we_can_create_iter() {
@@ -114,7 +114,28 @@ mod tests {
         assert_eq!(result, 4950);
     }
 
+    #[cfg(feature = "tokio")]
     #[tokio::test]
+    async fn parallel_test() {
+        let start = Instant::now();
+        let result = iter(0..150)
+            .map(|idx| async move {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                idx
+            })
+            .collect_par::<Vec<usize>>(10, 5)
+            .await;
+
+        let iteration_took = Instant::now() - start;
+        assert_gt!(iteration_took.as_millis(), 150);
+        assert_lt!(iteration_took.as_millis(), 200);
+        println!("{:?}", iteration_took);
+
+        assert_eq!(result.len(), 150);
+    }
+
+    #[cfg(feature = "async-std")]
+    #[async_std::test]
     async fn parallel_test() {
         let start = Instant::now();
         let result = iter(0..150)

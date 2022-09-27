@@ -9,3 +9,8 @@ fmt: setup
 	cargo sort -w
 	cargo fmt
 	cargo clippy
+
+.PHONY=test
+test:
+	cargo test --features tokio
+	cargo test --features async-std

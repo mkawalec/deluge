@@ -4,13 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["tokio"]
 parallel = []
 tokio = ["parallel", "dep:tokio"]
 async-std = ["parallel", "dep:async-std"]
 
 [dependencies]
-async-std = { version = "1.12", optional = true }
+async-std = { version = "1.12", features = ["attributes"], optional = true }
 futures = "0.3"
 more-asserts = "0.3"
 num_cpus = "1.13"
