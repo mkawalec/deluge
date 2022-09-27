@@ -1,17 +1,14 @@
 use crate::deluge::Deluge;
 use core::pin::Pin;
-use futures::poll;
 use futures::stream::{FuturesUnordered, StreamExt};
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
 use std::boxed::Box;
-use std::collections::HashSet;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::default::Default;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
-use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 
 #[cfg(feature = "tokio")]
@@ -58,7 +55,7 @@ impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C> {
         worker_count: impl Into<Option<usize>>,
         worker_concurrency: impl Into<Option<usize>>,
     ) -> Self {
-        let worker_count = worker_count.into().unwrap_or_else(|| num_cpus::get());
+        let worker_count = worker_count.into().unwrap_or_else(num_cpus::get);
         let mut workers = Vec::new();
         workers.reserve_exact(worker_count);
 
@@ -83,7 +80,7 @@ impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C> {
 //    and steals from the central place as needed
 
 // We need it to proove to the compilter that our worker body is a `FnOnce`
-fn make_fn_once<'a, T, F: FnOnce() -> T>(f: F) -> F {
+fn make_fn_once<T, F: FnOnce() -> T>(f: F) -> F {
     f
 }
 

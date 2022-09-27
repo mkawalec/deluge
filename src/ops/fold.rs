@@ -3,11 +3,8 @@ use core::pin::Pin;
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
 use std::boxed::Box;
-use std::collections::{BTreeMap, HashMap};
-use std::default::Default;
 use std::future::Future;
 use std::marker::PhantomData;
-use std::num::NonZeroUsize;
 
 use super::collect::Collect;
 
@@ -19,6 +16,7 @@ where
     Fut: Future<Output = Acc> + Send + 'a,
 {
     deluge: Option<Del>,
+    #[allow(clippy::type_complexity)]
     collect_future: Option<Pin<Box<dyn Future<Output = Vec<Del::Item>> + 'a>>>,
     collected_result: Option<std::vec::IntoIter<Del::Item>>,
     current_el_future: Option<Fut>,

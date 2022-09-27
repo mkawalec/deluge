@@ -24,7 +24,7 @@ where
     type Item = I::Item;
     type Output = impl Future<Output = Option<Self::Item>> + 'a;
 
-    fn next(self: &mut Self) -> Option<Self::Output> {
+    fn next(&mut self) -> Option<Self::Output> {
         let item = self.iter.next();
         item.map(|item| future::ready(Some(item)))
     }

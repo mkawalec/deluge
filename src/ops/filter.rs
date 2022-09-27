@@ -6,7 +6,7 @@ pub struct Filter<Del, F> {
     f: F,
 }
 
-impl<'a, Del, F> Filter<Del, F> {
+impl<Del, F> Filter<Del, F> {
     pub(crate) fn new(deluge: Del, f: F) -> Self {
         Self { deluge, f }
     }
