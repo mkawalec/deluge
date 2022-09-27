@@ -12,7 +12,7 @@ At the same time all the complexity is hidden away from the users behind well kn
 - [x] Add `fold`
 - [ ] `fold_par`
 - [ ] Run tests for async-std as well
-- [ ] Linting
+- [x] Linting
 - [ ] Document
 - [ ] Figure out why `filter` doesn't want to compile in tests
 - [ ] Add `filter_map`
