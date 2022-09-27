@@ -10,8 +10,10 @@ At the same time all the complexity is hidden away from the users behind well kn
 
 - [x] Don't require `collect` to construct an intermediate vector
 - [ ] Add `fold`
+- [ ] `fold_par`
+- [ ] Linting
+- [ ] Document
 - [ ] Figure out why `filter` doesn't want to compile in tests
 - [ ] Add `filter_map`
-- [ ] Document
 - [ ] Benchmark
 - [ ] Create proper, not timing-based, correctness tests
