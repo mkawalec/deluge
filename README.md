@@ -1,4 +1,4 @@
-# Deluge, not a stream
+# Deluge, is not a Stream
 
 Rust's streams drive and evaluate items sequentially.
 While this is a simple analog of Iterators, it causes asynchronous operations to take much more time than expected because each future is only driven after the prior one returns a result.
