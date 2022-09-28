@@ -1,6 +1,7 @@
 [package]
 name = "deluge"
 version = "0.1.0"
+authors = ["Michał Kawalec <michal@monad.cat>"]
 edition = "2021"
 
 [features]
