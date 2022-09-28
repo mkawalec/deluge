@@ -128,7 +128,8 @@ mod tests {
     #[tokio::test]
     async fn parallel_test() {
         let start = Instant::now();
-        let result = iter(0..150)
+        let result = (0..150)
+            .into_deluge()
             .map(|idx| async move {
                 tokio::time::sleep(Duration::from_millis(50)).await;
                 idx
@@ -147,7 +148,8 @@ mod tests {
     #[async_std::test]
     async fn parallel_test() {
         let start = Instant::now();
-        let result = iter(0..150)
+        let result = (0..150)
+            .into_deluge()
             .map(|idx| async move {
                 async_std::task::sleep(Duration::from_millis(50)).await;
                 idx
