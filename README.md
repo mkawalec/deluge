@@ -7,7 +7,7 @@ The animation below shows an example of mapping over a highly concurrent ten ele
 
 ![Example of processing using Deluge and Streams](./images/process.gif)
 
-**This library is still experimental, use at your own responsibility**
+**This library is still experimental, use at your own risk**
 
 ### Design decisions
 
