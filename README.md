@@ -5,7 +5,7 @@ While this is a simple analog of Iterators, it causes asynchronous operations to
 This library aims to invert that pattern by driving the underlying features concurrently or in parallel, to the desired level of concurrency and parallelism.
 At the same time all the complexity is hidden away from the users behind well known Iterator-like operations.
 
-![process.webm](./images/process.webm)
+![Example of processing using Deluge and Streams](./images/process.gif)
 
 **This library is still experimental, use at your own responsibility**
 
