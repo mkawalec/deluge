@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>My first three.js app</title>
+		<style>
+			body { margin: 0; }
+            .wrapper {
+                margin: 10px;
+                width: 700px;
+                height: 100px;
+
+                display: flex;
+                flex-wrap: wrap;
+            }
+
+            .wrapper .future {
+                overflow: hidden;
+                position: relative;
+                width: 50px;
+                height: 50px;
+                border: 1px solid #000;
+                padding: 3px;
+                margin: 3px;
+            }
+
+            .wrapper .future .operation {
+                width: 50px;
+                height: 50px;
+                position: absolute;
+
+                transform: translateY(-55px);
+            }
+
+            .wrapper .future .operation.driving {
+                transition: transform 1s 0.1s;
+                background: #D0CFEC;
+            }
+
+            .wrapper .future .operation.mapping {
+                transition: transform 0.5s;
+                background: #6A8E7F;
+            }
+
+            .wrapper .operation.animate {
+                transform: translateY(0px)
+            }
+
+            .wrapper .status {
+                width: 700px;
+                padding: 3px;
+                margin: 0px;
+            }
+		</style>
+	</head>
+	<body>
+        <div class='wrapper' id='stream'>
+
+        <h4 class='status'></h4>
+        </div>
+
+        <div class='wrapper' id='deluge'>
+
+        <h4 class='status'></h4>
+        </div>
+
+		<script>
+            document.querySelectorAll('.wrapper')
+                .forEach((wrapper) => {
+                    [...Array(10).keys()].map(() => {
+                        const el = document.createElement('div');
+                        el.classList.add('future');
+
+                        const driving = document.createElement('div');
+                        driving.classList.add('operation');
+                        driving.classList.add('driving');
+                        el.appendChild(driving);
+
+                        const mapping = document.createElement('div');
+                        mapping.classList.add('operation');
+                        mapping.classList.add('mapping');
+                        el.appendChild(mapping);
+
+                        wrapper.prepend(el);
+                    });
+                });
+
+            setTimeout(() => {
+                const start = new Date();
+                document.querySelector('.wrapper#deluge .status')
+                    .textContent = 'Deluge processing...';
+
+                document.querySelectorAll('.wrapper#deluge .operation.driving')
+                    .forEach((driveOp) => driveOp.classList.add('animate'));
+
+                document.querySelector('.wrapper#deluge')
+                    .addEventListener('transitionend', () => {
+                        document.querySelectorAll('.wrapper#deluge .operation.mapping')
+                            .forEach((driveOp) => driveOp.classList.add('animate'));
+
+                       document.querySelector('.wrapper#deluge .operation.mapping').addEventListener('transitionend', () => {
+                        console.log('end');
+                            document.querySelector('.wrapper#deluge .status')
+                                .textContent = `Deluge took: ${(new Date() - start) / 1000}s`;
+                       }, { once: true }) 
+                    }, { once: true })
+            }, 100);
+
+            setTimeout(() => {
+                const start = new Date();
+                let toAnimate = [...document.querySelectorAll('.wrapper#stream .operation.driving')];
+
+                function animateNextElement() {
+                    if (toAnimate.length == 0) {
+                        document.querySelector('.wrapper#stream .status')
+                            .textContent = `Stream took: ${(new Date() - start) / 1000}s`;
+                        return;
+                    }
+
+                    let el = toAnimate.shift();
+                    el.addEventListener('transitionend', (event) => {
+                        let mapping = event.target.parentNode.querySelector('.operation.mapping');
+                        mapping.classList.add('animate');
+                        mapping.addEventListener('transitionend', animateNextElement, { once: true });
+                    }, { once: true });
+
+                    el.classList.add('animate');
+                }
+
+                document.querySelector('.wrapper#stream .status')
+                    .textContent = 'Stream processing...';
+                animateNextElement();
+            }, 100);
+                
+		</script>
+	</body>
+</html>
