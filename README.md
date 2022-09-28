@@ -1,9 +1,9 @@
-# Deluge is not a Stream
+# Deluge is (not) a Stream
 
-Rust's streams drive and evaluate items sequentially.
-While this is a simple analog of Iterators, it causes asynchronous operations to take much more time than expected because each future is only driven after the prior one returns a result.
-This library aims to invert that pattern by driving the underlying features concurrently or in parallel, to the desired level of concurrency and parallelism.
-At the same time all the complexity is hidden away from the users behind well known Iterator-like operations.
+Deluge implements parallel and concurrent stream operations while driving the underlying futures concurrently.
+This is in contrast to standard streams which evaluate each future sequentially, leading to large delays on highly concurrent operations.
+
+The animation below shows an example of mapping over a highly concurrent ten element collection. &#x11F4D8; indicates the time it takes for an underlying element to become available, while &#x1F4D7; the time it takes to apply a mapped operation.
 
 ![Example of processing using Deluge and Streams](./images/process.gif)
 
@@ -13,12 +13,12 @@ At the same time all the complexity is hidden away from the users behind well kn
 
 This is an opinionated library that puts ease of use and external simplicity at the forefront.
 Operations that apply to individual elements like maps and filters **do not** allocate.
-They result in simply wrapping each element in another future but they do not control the way these processed elements are evaluated.
+They simply wrap each element in another future but they do not control the way these processed elements are evaluated.
 It is the collector that controls the evaluation strategy.
 At the moment there are two basic collectors supplied: a concurrent and a parallel one.
 
 The concurrent collector accepts an optional concurrency limit.
-If it is specified, at most the number of futures equal to that limit will be evaluated.
+If it is specified, at most the number of futures equal to that limit will be evaluated at once.
 
 ```rust
 let result = deluge::iter([1, 2, 3, 4])
@@ -40,7 +40,7 @@ let result = (0..150)
         tokio::time::sleep(Duration::from_millis(50)).await;
         idx
     })
-    .collect_par::<Vec<usize>>(None, None)
+    .collect_par::<Vec<usize>>(10, None)
     .await;
 
 assert_eq!(result.len(), 150);
