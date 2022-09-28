@@ -23,7 +23,7 @@ type Mutex<T> = async_std::sync::Mutex<T>;
 #[cfg(feature = "async-std")]
 use async_std::channel as mpsc;
 #[cfg(feature = "async-std")]
-type SendError<T> = PhantomData<T>;
+type SendError<T> = mpsc::SendError<T>;
 
 type OutstandingFutures<'a, Del> =
     Arc<Mutex<BTreeMap<usize, Pin<Box<<Del as Deluge<'a>>::Output>>>>>;
@@ -120,11 +120,7 @@ fn create_worker<'a, Del: Deluge<'a> + 'a>(
                 }
 
                 if let Some(result) = evaluated_futures.next().await {
-                    #[cfg(feature = "tokio")]
                     completed_channel.send(result).await?;
-
-                    #[cfg(feature = "async-std")]
-                    completed_channel.send(result).await;
                 } else {
                     // If there is no more results to fetch, double check if nothing
                     // was returned into `outstanding_futures` by another crashing worker.
@@ -182,7 +178,16 @@ where
             }
 
             let total_futures = outstanding_futures.len();
-            *this.completed_channel = Some(mpsc::channel(total_futures));
+
+            #[cfg(feature = "tokio")]
+            {
+                *this.completed_channel = Some(mpsc::channel(total_futures));
+            }
+            #[cfg(feature = "async-std")]
+            {
+                *this.completed_channel = Some(mpsc::bounded(total_futures));
+            }
+
             *this.outstanding_futures = Some(Arc::new(Mutex::new(outstanding_futures)));
 
             // Spawn workers

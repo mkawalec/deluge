@@ -3,6 +3,7 @@
 #![feature(const_trait_impl)]
 #![feature(map_first_last)]
 #![feature(let_chains)]
+#![feature(stmt_expr_attributes)]
 
 mod deluge;
 mod deluge_ext;
@@ -140,7 +141,7 @@ mod tests {
         let start = Instant::now();
         let result = iter(0..150)
             .map(|idx| async move {
-                tokio::time::sleep(Duration::from_millis(50)).await;
+                async_std::task::sleep(Duration::from_millis(50)).await;
                 idx
             })
             .collect_par::<Vec<usize>>(10, 5)
