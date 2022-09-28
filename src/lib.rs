@@ -7,21 +7,15 @@
 
 mod deluge;
 mod deluge_ext;
+mod into_deluge;
 mod iter;
 mod ops;
 
 pub use self::deluge::*;
 pub use deluge_ext::*;
+pub use into_deluge::*;
 pub use iter::*;
 pub use ops::*;
-
-// TODO:
-// - [?] add filter
-// - [ ] add filter_map
-// - [ ] add fold
-// - [x] rearrange files
-// - [x] Control the degree of concurrency on collect
-// - [ ] Add a parallel collector
 
 #[cfg(test)]
 mod tests {
@@ -56,6 +50,21 @@ mod tests {
             .await;
 
         assert_eq!(vec![2, 4, 6, 8], result);
+    }
+
+    #[tokio::test]
+    async fn we_can_go_between_values_and_deluges() {
+        let result = [1, 2, 3, 4]
+            .into_deluge()
+            .map(|x| async move { x * 2 })
+            .collect::<Vec<usize>>(None)
+            .await
+            .into_deluge()
+            .map(|x| async move { x * 2 })
+            .fold(None, 0, |acc, x| async move { acc + x })
+            .await;
+
+        assert_eq!(result, 40);
     }
 
     #[tokio::test]

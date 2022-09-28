@@ -11,7 +11,7 @@ At the same time all the complexity is hidden away from the users behind well kn
 - [x] Don't require `collect` to construct an intermediate vector
 - [x] Add `fold`
 - [x] Linting
-- [_] Run tests for async-std as well
+- [x] Run tests for async-std as well
 - [ ] `fold_par`
 - [ ] Document
 - [ ] Figure out why `filter` doesn't want to compile in tests
