@@ -139,7 +139,6 @@ mod tests {
         let iteration_took = Instant::now() - start;
         assert_gt!(iteration_took.as_millis(), 150);
         assert_lt!(iteration_took.as_millis(), 200);
-        println!("{:?}", iteration_took);
 
         assert_eq!(result.len(), 150);
     }
@@ -159,10 +158,48 @@ mod tests {
         let iteration_took = Instant::now() - start;
         assert_gt!(iteration_took.as_millis(), 150);
         assert_lt!(iteration_took.as_millis(), 200);
-        println!("{:?}", iteration_took);
 
         assert_eq!(result.len(), 150);
     }
+
+    #[cfg(feature = "tokio")]
+    #[tokio::test]
+    async fn parallel_fold() {
+        let start = Instant::now();
+        let result = iter(0..150)
+            .map(|idx| async move {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                idx
+            })
+            .fold_par(10, 5, 0, |acc, x| async move { acc + x })
+            .await;
+
+        let iteration_took = Instant::now() - start;
+        assert_gt!(iteration_took.as_millis(), 150);
+        assert_lt!(iteration_took.as_millis(), 200);
+
+        assert_eq!(result, 11175);
+    }
+
+    #[cfg(feature = "async-std")]
+    #[async_std::test]
+    async fn parallel_fold() {
+        let start = Instant::now();
+        let result = iter(0..150)
+            .map(|idx| async move {
+                async_std::task::sleep(Duration::from_millis(50)).await;
+                idx
+            })
+            .fold_par(10, 5, 0, |acc, x| async move { acc + x })
+            .await;
+
+        let iteration_took = Instant::now() - start;
+        assert_gt!(iteration_took.as_millis(), 150);
+        assert_lt!(iteration_took.as_millis(), 200);
+
+        assert_eq!(result, 11175);
+    }
+
 
     // Filter doesn't want to build, I have no idea why.
     // Let's move to augmenting the collector first

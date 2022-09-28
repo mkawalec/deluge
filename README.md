@@ -12,9 +12,9 @@ At the same time all the complexity is hidden away from the users behind well kn
 - [x] Add `fold`
 - [x] Linting
 - [x] Run tests for async-std as well
-- [ ] `fold_par`
+- [x] `fold_par`
 - [ ] Document
 - [ ] Figure out why `filter` doesn't want to compile in tests
 - [ ] Add `filter_map`
 - [ ] Benchmark
-- [ ] Create proper, not timing-based, correctness tests
+- [ ] Folds shouldn't allocate a full intermediate vector of collected values

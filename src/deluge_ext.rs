@@ -38,6 +38,22 @@ pub trait DelugeExt<'a>: Deluge<'a> {
         Fold::new(self, concurrency, acc, f)
     }
 
+    #[cfg(feature = "parallel")]
+    fn fold_par<Acc, F, Fut>(
+        self,
+        worker_count: impl Into<Option<usize>>,
+        worker_concurrency: impl Into<Option<usize>>,
+        acc: Acc,
+        f: F,
+    ) -> FoldPar<'a, Self, Acc, F, Fut>
+    where
+        F: FnMut(Acc, Self::Item) -> Fut + Send + 'a,
+        Fut: Future<Output = Acc> + Send + 'a,
+        Self: Sized,
+    {
+        FoldPar::new(self, worker_count, worker_concurrency, acc, f)
+    }
+
     fn collect<C>(self, concurrency: impl Into<Option<usize>>) -> Collect<'a, Self, C>
     where
         C: Default + Extend<Self::Item>,
