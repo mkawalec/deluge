@@ -3,7 +3,7 @@
 Deluge implements parallel and concurrent stream operations while driving the underlying futures concurrently.
 This is in contrast to standard streams which evaluate each future sequentially, leading to large delays on highly concurrent operations.
 
-The animation below shows an example of mapping over a highly concurrent ten element collection. &#x11F4D8; indicates the time it takes for an underlying element to become available, while &#x1F4D7; the time it takes to apply a mapped operation.
+The animation below shows an example of mapping over a highly concurrent ten element collection. &#x1F4D8; indicates the time it takes for an underlying element to become available, while &#x1F4D7; the time it takes to apply a mapped operation.
 
 ![Example of processing using Deluge and Streams](./images/process.gif)
 
