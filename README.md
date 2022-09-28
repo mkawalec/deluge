@@ -18,7 +18,7 @@ At the moment there are two basic collectors supplied: a concurrent and a parall
 The concurrent collector accepts an optional concurrency limit.
 If it is specified, at most the number of futures equal to that limit will be evaluated.
 
-```
+```rust
 let result = deluge::iter([1, 2, 3, 4])
     .map(|x| async move { x * 2 })
     .collect::<Vec<usize>>(None)
@@ -31,7 +31,7 @@ The parallel collector spawns a number of workers.
 If a number of workers is not specified, it will default to the number of cpus, if the concurrency limit is not specified each worker will default to `total_futures_to_evaluate / number_of_workers`.
 Note that you need to enable either a `tokio` or `async-std` feature to support parallel collectors.
 
-```
+```rust
 let result = (0..150)
     .into_deluge()
     .map(|idx| async move {
