@@ -1,7 +1,7 @@
 use crate::deluge::Deluge;
 use std::future::Future;
 
-pub struct Filter<Del, F> {
+pub(crate) struct Filter<Del, F> {
     deluge: Del,
     f: F,
 }
@@ -12,9 +12,9 @@ impl<Del, F> Filter<Del, F> {
     }
 }
 
-// This ensures that the lifetime of the input parameter
-// is the same as the lifetime of the output future
-pub trait XFn<'a, I: 'a, O> {
+/// An internal helper trait allowing us to bind the lifetime
+/// of an output future with a lifetime of a parameter to a callback function
+pub(crate) trait XFn<'a, I: 'a, O> {
     type Output: Future<Output = O> + 'a;
     fn call(&self, x: I) -> Self::Output;
 }

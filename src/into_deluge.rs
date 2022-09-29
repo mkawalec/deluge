@@ -1,5 +1,6 @@
 use crate::iter::{iter, Iter};
 
+/// Allows converting any type that implements `IntoIterator` into a `Deluge`
 pub trait IntoDeluge: IntoIterator {
     fn into_deluge(self) -> Iter<<Self as IntoIterator>::IntoIter>
     where

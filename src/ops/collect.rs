@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 
 #[pin_project]
-pub struct Collect<'a, Del, C>
+pub(crate) struct Collect<'a, Del, C>
 where
     Del: Deluge<'a>,
 {

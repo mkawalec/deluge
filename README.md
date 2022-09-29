@@ -46,7 +46,7 @@ let result = (0..150)
 assert_eq!(result.len(), 150);
 ```
 
-Please take a look at [the tests](https://github.com/mkawalec/deluge/blob/main/src/lib.rs) for more examples of using the library.
+Please take a look at [the tests](https://github.com/mkawalec/deluge/blob/main/src/deluge_ext.rs) for more examples of using the library.
 
 ### Questions
 

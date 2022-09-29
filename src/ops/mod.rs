@@ -1,12 +1,12 @@
-pub mod collect;
+pub(crate) mod collect;
 #[cfg(feature = "parallel")]
-pub mod collect_par;
-pub mod filter;
-pub mod fold;
+pub(crate) mod collect_par;
+pub(crate) mod filter;
+pub(crate) mod fold;
 #[cfg(feature = "parallel")]
-pub mod fold_par;
-pub mod map;
-pub mod take;
+pub(crate) mod fold_par;
+pub(crate) mod map;
+pub(crate) mod take;
 
 pub use collect::*;
 #[cfg(feature = "parallel")]

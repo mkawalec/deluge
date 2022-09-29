@@ -1,12 +1,13 @@
 use crate::deluge::Deluge;
 use std::future::{self, Future};
 
-pub struct Iter<I> {
+pub(crate) struct Iter<I> {
     iter: I,
 }
 
 impl<I> Unpin for Iter<I> {}
 
+/// Converts any iterator into a `Deluge`
 pub fn iter<I>(i: I) -> Iter<I::IntoIter>
 where
     I: IntoIterator,

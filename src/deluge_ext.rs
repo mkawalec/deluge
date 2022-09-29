@@ -6,6 +6,7 @@ use crate::ops::*;
 
 impl<'a, T> DelugeExt<'a> for T where T: Deluge<'a> {}
 
+/// Exposes easy to use Deluge operations. **This should be your first step**
 pub trait DelugeExt<'a>: Deluge<'a> {
     /// Transforms each element by applying an asynchronous function `f` to it
     /// 

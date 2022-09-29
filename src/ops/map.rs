@@ -1,7 +1,7 @@
 use crate::deluge::Deluge;
 use std::future::Future;
 
-pub struct Map<Del, F> {
+pub(crate) struct Map<Del, F> {
     deluge: Del,
     f: F,
 }

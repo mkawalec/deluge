@@ -1,6 +1,6 @@
 use std::future::Future;
 
-/// A stream of unevaluated futures eventually returning an element of the stream.
+/// A stream of unevaluated futures eventually returning an element of the stream
 /// 
 /// An executor such as `collect` or `collect_par` controls how these futures are evaluated.
 /// If a `None` is returned for a given element of a collection, it means that
