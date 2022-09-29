@@ -254,7 +254,6 @@ where
     }
 }
 
-
 // Useful for when we need to prove to the compiler that our worker body is a `FnOnce`
 fn make_fn_once<T, F: FnOnce() -> T>(f: F) -> F {
     f

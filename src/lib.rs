@@ -9,24 +9,24 @@
 //!
 //! Deluge implements parallel and concurrent stream operations while driving the underlying futures concurrently.
 //! This is in contrast to standard streams which evaluate each future sequentially, leading to large delays on highly concurrent operations.
-//! 
+//!
 //! ```toml
 //! deluge = "0.1"
 //! ```
 //!
 //! **This library is still experimental, use at your own risk**
-//! 
+//!
 //! ### Available features
-//! 
+//!
 //! By default the library does not build the parallel collectors and folds.
 //! In order to enable them, please enable either the `tokio` or `async-std` feature.
-//! 
+//!
 //! ```toml
 //! deluge = { version = "0.1", features = ["tokio"] }
 //! ```
-//! 
+//!
 //! or
-//! 
+//!
 //! ```toml
 //! deluge = { version = "0.1", features = ["async-std"] }
 //! ```
@@ -44,7 +44,7 @@
 //!
 //! ```
 //! use deluge::*;
-//! 
+//!
 //! # futures::executor::block_on(async {
 //! let result = deluge::iter([1, 2, 3, 4])
 //!    .map(|x| async move { x * 2 })
@@ -62,7 +62,7 @@
 //! ```
 //! use deluge::*;
 //! # use std::time::Duration;
-//! 
+//!
 //! # let rt = tokio::runtime::Runtime::new().unwrap();
 //! # rt.handle().block_on(async {
 //! let result = (0..150)
