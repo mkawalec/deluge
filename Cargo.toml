@@ -1,6 +1,6 @@
 [package]
 name = "deluge"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Michał Kawalec <michal@monad.cat>"]
 license = "MPL-2.0"
 description = """
@@ -11,6 +11,7 @@ as quickly as possible.
 readme = "README.md"
 homepage = "https://github.com/mkawalec/deluge"
 repository = "https://github.com/mkawalec/deluge"
+documentation = "https://docs.rs/deluge/latest/deluge/"
 keywords = ["futures", "async", "deluge"]
 categories = ["asynchronous"]
 edition = "2021"
