@@ -84,9 +84,6 @@ fn make_fn_once<T, F: FnOnce() -> T>(f: F) -> F {
     f
 }
 
-// TODO:
-// 1. Create evaluators
-// 2. Add work stealing
 
 // No need to provide initial work, the worker should pull
 // it from `outstanding_futures` by itself
