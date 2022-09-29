@@ -61,16 +61,3 @@ Any operation you would find useful is fair game, contributions are welcome.
 Absolutely!
 As long the API exposed to the users does not get more complex, the number of allocations does not go up and intermediate memory usage does not increase.
 Please open an issue first if you feel that breaking any of the above rules is absolutely neccessary and we will discuss.
-
-### TODO:
-
-- [x] Don't require `collect` to construct an intermediate vector
-- [x] Add `fold`
-- [x] Linting
-- [x] Run tests for async-std as well
-- [x] `fold_par`
-- [_] Document
-- [ ] Figure out why `filter` doesn't want to compile in tests
-- [ ] Add `filter_map`
-- [ ] Benchmark
-- [ ] Folds shouldn't allocate a full intermediate vector of collected values
