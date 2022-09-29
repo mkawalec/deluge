@@ -80,13 +80,6 @@ impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C> {
 // 2. Each worker starts with worker_concurrency futures
 //    and steals from the central place as needed
 
-// We need it to proove to the compilter that our worker body is a `FnOnce`
-fn make_fn_once<T, F: FnOnce() -> T>(f: F) -> F {
-    f
-}
-
-// No need to provide initial work, the worker should pull
-// it from `outstanding_futures` by itself
 fn create_worker<'a, Del: Deluge<'a> + 'a>(
     outstanding_futures: OutstandingFutures<'a, Del>,
     completed_channel: mpsc::Sender<CompletedItem<'a, Del>>,
@@ -94,7 +87,6 @@ fn create_worker<'a, Del: Deluge<'a> + 'a>(
 ) -> Pin<Box<dyn Future<Output = ()> + 'a>> {
     println!("Creating a worker");
     Box::pin(async move {
-        println!("Worker is alive");
         let mut evaluated_futures = FuturesUnordered::new();
 
         let run_worker = make_fn_once(|| async {
@@ -260,4 +252,10 @@ where
             _ => Poll::Pending,
         }
     }
+}
+
+
+// Useful for when we need to prove to the compiler that our worker body is a `FnOnce`
+fn make_fn_once<T, F: FnOnce() -> T>(f: F) -> F {
+    f
 }
