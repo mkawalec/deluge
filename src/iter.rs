@@ -29,3 +29,14 @@ where
         item.map(|item| future::ready(Some(item)))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn we_can_create_iter() {
+        let _del = iter([1, 2, 3]);
+        assert_eq!(2, 2);
+    }
+}

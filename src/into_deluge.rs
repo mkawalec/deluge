@@ -12,3 +12,13 @@ where T: IntoIterator,
         iter(self)        
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn we_can_convert_to_deluge() {
+        [1, 2, 3].into_deluge();
+    }
+}
