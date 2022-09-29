@@ -39,7 +39,8 @@ pub trait DelugeExt<'a>: Deluge<'a> {
     }
 
     fn take(self, how_many: usize) -> Take<Self>
-    where Self: Sized,
+    where
+        Self: Sized,
     {
         Take::new(self, how_many)
     }
@@ -85,8 +86,8 @@ pub trait DelugeExt<'a>: Deluge<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::iter::iter;
     use crate::into_deluge::IntoDeluge;
+    use crate::iter::iter;
     use more_asserts::{assert_gt, assert_lt};
     use std::time::{Duration, Instant};
 
@@ -170,7 +171,8 @@ mod tests {
 
     #[tokio::test]
     async fn take_until_a_limit() {
-        let result = (0..100).into_deluge()
+        let result = (0..100)
+            .into_deluge()
             .take(10)
             .fold(None, 0, |acc, idx| async move { acc + idx })
             .await;
@@ -272,7 +274,6 @@ mod tests {
 
         assert_eq!(result, 11175);
     }
-
 
     // Filter doesn't want to build, I have no idea why.
     // Let's move to augmenting the collector first

@@ -40,7 +40,7 @@ where
         worker_count: impl Into<Option<usize>>,
         worker_concurrency: impl Into<Option<usize>>,
         acc: Acc,
-        f: F
+        f: F,
     ) -> Self {
         Self {
             deluge: Some(deluge),
@@ -69,7 +69,11 @@ where
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project();
         if this.deluge.is_some() && this.collect_future.is_none() {
-            let collect_future = CollectPar::new(this.deluge.take().unwrap(), *this.worker_count, *this.worker_concurrency);
+            let collect_future = CollectPar::new(
+                this.deluge.take().unwrap(),
+                *this.worker_count,
+                *this.worker_concurrency,
+            );
             *this.collect_future = Some(Box::pin(collect_future));
         }
 

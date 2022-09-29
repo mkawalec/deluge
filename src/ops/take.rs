@@ -8,7 +8,7 @@ pub struct Take<Del> {
 
 impl<Del> Take<Del> {
     pub(crate) fn new(deluge: Del, how_many: usize) -> Self {
-        Self { 
+        Self {
             deluge,
             how_many,
             how_many_provided: 0,
@@ -17,7 +17,8 @@ impl<Del> Take<Del> {
 }
 
 impl<'a, Del> Deluge<'a> for Take<Del>
-where Del: Deluge<'a> + 'a,
+where
+    Del: Deluge<'a> + 'a,
 {
     type Item = Del::Item;
     type Output = Del::Output;
@@ -25,9 +26,9 @@ where Del: Deluge<'a> + 'a,
     fn next(&'a mut self) -> Option<Self::Output> {
         if self.how_many_provided < self.how_many {
             self.how_many_provided += 1;
-            return self.deluge.next();
+            self.deluge.next()
         } else {
-            return None;
+            None
         }
     }
 }

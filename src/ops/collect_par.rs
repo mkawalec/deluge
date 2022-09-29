@@ -84,7 +84,6 @@ fn make_fn_once<T, F: FnOnce() -> T>(f: F) -> F {
     f
 }
 
-
 // No need to provide initial work, the worker should pull
 // it from `outstanding_futures` by itself
 fn create_worker<'a, Del: Deluge<'a> + 'a>(
