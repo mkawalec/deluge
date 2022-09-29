@@ -33,7 +33,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-targets --all-features -- -D warnings
+          args: --all-targets --all-features --profile ${{ matrix.profile }} -- -D warnings
 
   format:
     name: cargo fmt
