@@ -19,6 +19,9 @@ jobs:
         profile:
           - dev
           - release
+        feature:
+          - tokio
+          - async-std
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -33,7 +36,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-targets --all-features --profile ${{ matrix.profile }} -- -D warnings
+          args: --all-targets --features ${{ matrix.feature }} --profile ${{ matrix.profile }} -- -D warnings
 
   format:
     name: cargo fmt

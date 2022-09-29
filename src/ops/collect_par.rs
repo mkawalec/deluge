@@ -42,6 +42,7 @@ where
     workers: Vec<Worker<'a>>,
     outstanding_futures: Option<OutstandingFutures<'a, Del>>,
     completed_items: Option<BTreeMap<usize, Del::Item>>,
+    #[allow(clippy::type_complexity)]
     completed_channel: Option<(
         mpsc::Sender<CompletedItem<'a, Del>>,
         mpsc::Receiver<CompletedItem<'a, Del>>,
