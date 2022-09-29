@@ -14,6 +14,12 @@ repository = "https://github.com/mkawalec/deluge"
 keywords = ["futures", "async", "deluge"]
 categories = ["asynchronous"]
 edition = "2021"
+exclude = [
+    ".github/*",
+    ".gitignore",
+    "Makefile",
+    "images/*",
+]
 
 [features]
 parallel = []
