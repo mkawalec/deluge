@@ -6,6 +6,7 @@ pub mod fold;
 #[cfg(feature = "parallel")]
 pub mod fold_par;
 pub mod map;
+pub mod take;
 
 pub use collect::*;
 #[cfg(feature = "parallel")]
@@ -15,3 +16,4 @@ pub use fold::*;
 #[cfg(feature = "parallel")]
 pub use fold_par::*;
 pub use map::*;
+pub use take::*;

@@ -38,6 +38,12 @@ pub trait DelugeExt<'a>: Deluge<'a> {
         Fold::new(self, concurrency, acc, f)
     }
 
+    fn take(self, how_many: usize) -> Take<Self>
+    where Self: Sized,
+    {
+        Take::new(self, how_many)
+    }
+
     #[cfg(feature = "parallel")]
     fn fold_par<Acc, F, Fut>(
         self,
@@ -160,6 +166,16 @@ mod tests {
         assert_lt!(iteration_took.as_millis(), 200);
 
         assert_eq!(result.len(), 15);
+    }
+
+    #[tokio::test]
+    async fn take_until_a_limit() {
+        let result = (0..100).into_deluge()
+            .take(10)
+            .fold(None, 0, |acc, idx| async move { acc + idx })
+            .await;
+
+        assert_eq!(result, 45);
     }
 
     #[tokio::test]
