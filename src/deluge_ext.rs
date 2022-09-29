@@ -162,6 +162,21 @@ pub trait DelugeExt<'a>: Deluge<'a> {
         Take::new(self, how_many)
     }
 
+    /// Collects elements in the current `Deluge` into a collection with a desired concurrency
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use deluge::*;
+    ///
+    /// # futures::executor::block_on(async {
+    /// let result = (0..100).into_deluge()
+    ///     .collect::<Vec<usize>>(None)
+    ///     .await;
+    ///
+    /// assert_eq!(result.len(), 100);
+    /// # });
+    /// ```
     fn collect<C>(self, concurrency: impl Into<Option<usize>>) -> Collect<'a, Self, C>
     where
         C: Default + Extend<Self::Item>,
@@ -170,6 +185,27 @@ pub trait DelugeExt<'a>: Deluge<'a> {
         Collect::new(self, concurrency)
     }
 
+    /// Collects elements in the current `Deluge` into a collection
+    /// in parallel. Optionally accepts a degree of parallelism 
+    /// and concurrency for each worker.
+    /// 
+    /// If the number of workers is not specified, we will default to the number of logical cpus.
+    /// If concurrency per worker is not specified, we will default to the total number of
+    /// items in a current deluge divided by the number of workers.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use deluge::*;
+    ///
+    /// # futures::executor::block_on(async {
+    /// let result = (0..100).into_deluge()
+    ///     .collect_par::<Vec<usize>>(None, None)
+    ///     .await;
+    ///
+    /// assert_eq!(result.len(), 100);
+    /// # });
+    /// ```
     #[cfg(feature = "parallel")]
     fn collect_par<C>(
         self,
