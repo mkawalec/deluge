@@ -2,6 +2,17 @@
 name = "deluge"
 version = "0.1.0"
 authors = ["Michał Kawalec <michal@monad.cat>"]
+license = "MPL-2.0"
+description = """
+A highly concurrent stream library driving the underlying futures
+either concurrently or in parallel to process streaming operations
+as quickly as possible.
+"""
+readme = "README.md"
+homepage = "https://github.com/mkawalec/deluge"
+repository = "https://github.com/mkawalec/deluge"
+keywords = ["futures", "async", "deluge"]
+categories = ["asynchronous"]
 edition = "2021"
 
 [features]
