@@ -163,9 +163,9 @@ pub trait DelugeExt<'a>: Deluge<'a> {
     }
 
     /// Collects elements in the current `Deluge` into a collection with a desired concurrency
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use deluge::*;
     ///
@@ -186,15 +186,15 @@ pub trait DelugeExt<'a>: Deluge<'a> {
     }
 
     /// Collects elements in the current `Deluge` into a collection
-    /// in parallel. Optionally accepts a degree of parallelism 
+    /// in parallel. Optionally accepts a degree of parallelism
     /// and concurrency for each worker.
-    /// 
+    ///
     /// If the number of workers is not specified, we will default to the number of logical cpus.
     /// If concurrency per worker is not specified, we will default to the total number of
     /// items in a current deluge divided by the number of workers.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use deluge::*;
     ///
