@@ -1,0 +1,70 @@
+name: Main checks
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/main-checks.yml'
+      - 'src/**/*'
+      - 'Cargo.toml'
+  push:
+    branches: ["main"]
+
+jobs:
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        profile:
+          - dev
+          - release
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly 
+          override: true
+          profile: minimal
+          components: clippy
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Run clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-targets --all-features -- -D warnings
+
+  format:
+    name: cargo fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          profile: minimal
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Run fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          toolchain: nightly
+          args: --all -- --check
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        override: true
+        profile: minimal
+    - uses: Swatinem/rust-cache@v1
+    - name: Run tests
+      run: cargo test --features tokio --verbose && cargo test --features async-std --verbose
