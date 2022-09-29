@@ -61,7 +61,7 @@
 //!
 //! ```
 //! use deluge::*;
-//! use std::time::Duration;
+//! # use std::time::Duration;
 //! 
 //! # let rt = tokio::runtime::Runtime::new().unwrap();
 //! # rt.handle().block_on(async {
