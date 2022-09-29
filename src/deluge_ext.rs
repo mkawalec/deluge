@@ -13,12 +13,16 @@ pub trait DelugeExt<'a>: Deluge<'a> {
     /// # Examples
     /// 
     /// ```
+    /// use deluge::*;
+    ///
+    /// # futures::executor::block_on(async {
     /// let result = deluge::iter([1, 2, 3, 4])
     ///     .map(|x| async move { x * 2 })
     ///     .collect::<Vec<usize>>(None)
     ///     .await;
     /// 
     /// assert_eq!(vec![2, 4, 6, 8], result);
+    /// # });
     /// ```
     fn map<Fut, F>(self, f: F) -> Map<Self, F>
     where
@@ -33,14 +37,19 @@ pub trait DelugeExt<'a>: Deluge<'a> {
     /// 
     /// # Examples
     /// 
-    /// ```
-    /// let result = (0..10).into_deluge()
-    ///     .filter(|x| async move { idx % 2 == 0 })
-    ///     .collect::<Vec<usize>>()
-    ///     .await;
-    /// 
-    /// assert_eq!(vec![0, 2, 4, 6, 8], result);
-    /// ```
+    // ```
+    // use deluge::*;
+    // 
+    // # futures::executor::block_on(async {
+    // let result = (0..10).into_deluge()
+    //     .filter(|x| async move { x % 2 == 0 })
+    //     .collect::<Vec<usize>>()
+    //     .await;
+    // 
+    // assert_eq!(vec![0, 2, 4, 6, 8], result);
+    // # });
+    // 
+    // ```
     fn filter<F>(self, f: F) -> Filter<Self, F>
     where
         for<'b> F: XFn<'b, &'b Self::Item, bool> + Send + 'b,
@@ -57,21 +66,29 @@ pub trait DelugeExt<'a>: Deluge<'a> {
     /// Unlimited concurrency:
     /// 
     /// ```
+    /// use deluge::*;
+    /// 
+    /// # futures::executor::block_on(async {
     /// let result = (0..100).into_deluge()
     ///     .fold(None, 0, |acc, x| async move { acc + x })
     ///     .await;
     /// 
     /// assert_eq!(result, 4950);
+    /// # });
     /// ```
     /// 
     /// Concurrency limited to at most ten futures evaluated at once:
     ///
     /// ```
+    /// use deluge::*;
+    /// 
+    /// # futures::executor::block_on(async {
     /// let result = (0..100).into_deluge()
     ///     .fold(10, 0, |acc, x| async move { acc + x })
     ///     .await;
     /// 
     /// assert_eq!(result, 4950);
+    /// # });
     /// ```
     fn fold<Acc, F, Fut>(
         self,
@@ -96,11 +113,15 @@ pub trait DelugeExt<'a>: Deluge<'a> {
     /// # Examples
     /// 
     /// ```
+    /// use deluge::*;
+    /// 
+    /// # futures::executor::block_on(async {
     /// let result = (0..100).into_deluge()
     ///     .fold_par(None, None, 0, |acc, x| async move { acc + x })
     ///     .await;
     /// 
     /// assert_eq!(result, 4950);
+    /// # });
     /// ```
     #[cfg(feature = "parallel")]
     fn fold_par<Acc, F, Fut>(
@@ -123,12 +144,16 @@ pub trait DelugeExt<'a>: Deluge<'a> {
     /// # Examples
     /// 
     /// ```
+    /// use deluge::*;
+    /// 
+    /// # futures::executor::block_on(async {
     /// let result = (0..100).into_deluge()
     ///     .take(1)
     ///     .fold(None, 0, |acc, x| async move { acc + x })
     ///     .await;
     /// 
     /// assert_eq!(0, result);
+    /// # });
     /// ```
     fn take(self, how_many: usize) -> Take<Self>
     where

@@ -1,6 +1,6 @@
 use crate::deluge::Deluge;
 
-pub(crate) struct Take<Del> {
+pub struct Take<Del> {
     deluge: Del,
     how_many: usize,
     how_many_provided: usize,

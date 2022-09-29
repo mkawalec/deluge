@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 use super::collect_par::CollectPar;
 
 #[pin_project]
-pub(crate) struct FoldPar<'a, Del, Acc, F, Fut>
+pub struct FoldPar<'a, Del, Acc, F, Fut>
 where
     Del: Deluge<'a>,
     F: FnMut(Acc, Del::Item) -> Fut + Send + 'a,

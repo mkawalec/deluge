@@ -1,7 +1,7 @@
 use crate::deluge::Deluge;
 use std::future::{self, Future};
 
-pub(crate) struct Iter<I> {
+pub struct Iter<I> {
     iter: I,
 }
 

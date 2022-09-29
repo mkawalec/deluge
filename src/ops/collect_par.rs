@@ -31,7 +31,7 @@ type CompletedItem<'a, Del> = (usize, Option<<Del as Deluge<'a>>::Item>);
 type Worker<'a> = Pin<Box<dyn Future<Output = ()> + 'a>>;
 
 #[pin_project]
-pub(crate) struct CollectPar<'a, Del, C>
+pub struct CollectPar<'a, Del, C>
 where
     Del: Deluge<'a>,
 {

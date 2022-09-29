@@ -43,14 +43,16 @@
 //! If it is specified, at most the number of futures equal to that limit will be evaluated at once.
 //!
 //! ```
-//! use deluge;
+//! use deluge::*;
 //! 
+//! # futures::executor::block_on(async {
 //! let result = deluge::iter([1, 2, 3, 4])
 //!    .map(|x| async move { x * 2 })
 //!    .collect::<Vec<usize>>(None)
 //!    .await;
 //!
 //! assert_eq!(vec![2, 4, 6, 8], result);
+//! # });
 //! ```
 //!
 //! The parallel collector spawns a number of workers.
@@ -58,8 +60,11 @@
 //! Note that you need to enable either a `tokio` or `async-std` feature to support parallel collectors.
 //!
 //! ```
-//! use deluge;
+//! use deluge::*;
+//! use std::time::Duration;
 //! 
+//! # let rt = tokio::runtime::Runtime::new().unwrap();
+//! # rt.handle().block_on(async {
 //! let result = (0..150)
 //!    .into_deluge()
 //!    .map(|idx| async move {
@@ -70,6 +75,7 @@
 //!    .await;
 //!
 //! assert_eq!(result.len(), 150);
+//! # });
 //! ```
 
 mod deluge;
@@ -82,4 +88,3 @@ pub use self::deluge::*;
 pub use deluge_ext::*;
 pub use into_deluge::*;
 pub use iter::*;
-pub use ops::*;
