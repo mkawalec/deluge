@@ -89,7 +89,6 @@ fn create_worker<'a, Del: Deluge<'a> + 'a>(
     completed_channel: mpsc::Sender<CompletedItem<'a, Del>>,
     concurrency: NonZeroUsize,
 ) -> Pin<Box<dyn Future<Output = ()> + 'a>> {
-    println!("Creating a worker");
     Box::pin(async move {
         let mut evaluated_futures = FuturesUnordered::new();
 

@@ -236,9 +236,7 @@ mod tests {
 
     #[tokio::test]
     async fn we_can_collect() {
-        println!("collcet");
         let result = iter([1, 2, 3, 4]).collect::<Vec<usize>>(None).await;
-        println!("cpllect completed");
 
         assert_eq!(vec![1, 2, 3, 4], result);
     }
