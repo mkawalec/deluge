@@ -4,6 +4,7 @@
 #![feature(map_first_last)]
 #![feature(let_chains)]
 #![feature(stmt_expr_attributes)]
+#![feature(extend_one)]
 
 //! # Deluge is (not) a Stream
 //!
@@ -64,6 +65,7 @@
 //! # use std::time::Duration;
 //!
 //! # let rt = tokio::runtime::Runtime::new().unwrap();
+//! # #[cfg(feature = "parallel")]
 //! # rt.handle().block_on(async {
 //! let result = (0..150)
 //!    .into_deluge()
