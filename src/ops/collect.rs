@@ -20,8 +20,8 @@ where
 
     polled_futures: HashMap<usize, Pin<Box<Del::Output>>>,
     completed_items: BTreeMap<usize, Option<Del::Item>>,
-    last_provided_idx: Option<usize>,
 
+    last_provided_idx: Option<usize>,
     collection: Option<C>,
 }
 

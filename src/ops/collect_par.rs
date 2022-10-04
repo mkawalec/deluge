@@ -1,5 +1,6 @@
 use crate::deluge::Deluge;
 use core::pin::Pin;
+use futures::Stream;
 use futures::stream::{FuturesUnordered, StreamExt};
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
@@ -7,7 +8,6 @@ use std::boxed::Box;
 use std::collections::BTreeMap;
 use std::default::Default;
 use std::future::Future;
-use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 
@@ -41,13 +41,15 @@ where
 
     workers: Vec<Worker<'a>>,
     outstanding_futures: Option<OutstandingFutures<'a, Del>>,
-    completed_items: Option<BTreeMap<usize, Del::Item>>,
+    completed_items: BTreeMap<usize, Option<Del::Item>>,
     #[allow(clippy::type_complexity)]
     completed_channel: Option<(
         mpsc::Sender<CompletedItem<'a, Del>>,
         mpsc::Receiver<CompletedItem<'a, Del>>,
     )>,
-    _collection: PhantomData<C>,
+
+    last_provided_idx: Option<usize>,
+    collection: Option<C>,
 }
 
 impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C> {
@@ -67,10 +69,12 @@ impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C> {
 
             workers,
             outstanding_futures: None,
-            completed_items: Some(BTreeMap::new()),
+            completed_items: BTreeMap::new(),
             // Only spawn the channel after we know how many items we have to eval
             completed_channel: None,
-            _collection: PhantomData,
+
+            last_provided_idx: None,
+            collection: Some(C::default()),
         }
     }
 }
@@ -137,14 +141,14 @@ fn create_worker<'a, Del: Deluge<'a> + 'a>(
     })
 }
 
-impl<'a, Del, C> Future for CollectPar<'a, Del, C>
+impl<'a, Del, C> Stream for CollectPar<'a, Del, C>
 where
     Del: Deluge<'a> + 'a,
     C: Default + Extend<Del::Item>,
 {
-    type Output = C;
+    type Item = Del::Item;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<C> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.as_mut().project();
 
         if this.deluge.is_some() {
@@ -201,18 +205,45 @@ where
             .retain_mut(|worker| !matches!(Pin::new(worker).poll(cx), Poll::Ready(_)));
 
         // Drain the compelted channel
-        while let Ok((idx, Some(v))) = this.completed_channel.as_mut().unwrap().1.try_recv() {
-            this.completed_items.as_mut().unwrap().insert(idx, v);
+        while let Ok((idx, v)) = this.completed_channel.as_mut().unwrap().1.try_recv() {
+            this.completed_items.insert(idx, v);
         }
 
-        if this.workers.is_empty() {
-            let mut collection: C = Default::default();
-            let items = this.completed_items.take().unwrap().into_values();
-            collection.extend(items);
+        loop {
+            let idx_to_provide = this.last_provided_idx.map(|x| x + 1).unwrap_or(0);
+            if let Some(val) = this.completed_items.get_mut(&idx_to_provide) {
+                *this.last_provided_idx = Some(idx_to_provide);
+                // If we saw an item, always instruct the waker to try again
+                cx.waker().wake_by_ref();
 
-            Poll::Ready(collection)
-        } else {
-            Poll::Pending
+                if val.is_some() {
+                    return Poll::Ready(Some(val.take().unwrap()));
+                }
+            } else if this.workers.is_empty() {
+                // Our input has been exhausted, nothing more to see
+                return Poll::Ready(None);
+            } else {
+                return Poll::Pending;
+            }
+        }
+    }
+}
+
+impl<'a, Del, C> Future for CollectPar<'a, Del, C>
+where
+    Del: Deluge<'a> + 'a,
+    C: Default + Extend<Del::Item>,
+{
+    type Output = C;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<C> {
+        match self.as_mut().poll_next(cx) {
+            Poll::Ready(Some(v)) => {
+                self.collection.as_mut().unwrap().extend_one(v);
+                Poll::Pending
+            },
+            Poll::Ready(None) => Poll::Ready(self.collection.take().unwrap()),
+            Poll::Pending => Poll::Pending,
         }
     }
 }
