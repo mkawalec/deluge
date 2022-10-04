@@ -64,6 +64,7 @@
 //! # use std::time::Duration;
 //!
 //! # let rt = tokio::runtime::Runtime::new().unwrap();
+//! # #[cfg(feature = "parallel")]
 //! # rt.handle().block_on(async {
 //! let result = (0..150)
 //!    .into_deluge()
