@@ -1,7 +1,7 @@
 use crate::deluge::Deluge;
 use core::pin::Pin;
-use futures::task::{Context, Poll};
 use futures::stream::Stream;
+use futures::task::{Context, Poll};
 use pin_project::pin_project;
 use std::boxed::Box;
 use std::collections::{BTreeMap, HashMap};
@@ -125,7 +125,6 @@ where
     }
 }
 
-
 impl<'a, Del, C> Future for Collect<'a, Del, C>
 where
     Del: Deluge<'a> + 'a,
@@ -138,7 +137,7 @@ where
             Poll::Ready(Some(v)) => {
                 self.collection.as_mut().unwrap().extend_one(v);
                 Poll::Pending
-            },
+            }
             Poll::Ready(None) => Poll::Ready(self.collection.take().unwrap()),
             Poll::Pending => Poll::Pending,
         }
