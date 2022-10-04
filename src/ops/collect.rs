@@ -1,12 +1,12 @@
 use crate::deluge::Deluge;
 use core::pin::Pin;
 use futures::task::{Context, Poll};
+use futures::stream::Stream;
 use pin_project::pin_project;
 use std::boxed::Box;
 use std::collections::{BTreeMap, HashMap};
 use std::default::Default;
 use std::future::Future;
-use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 
 #[pin_project]
@@ -19,8 +19,10 @@ where
     concurrency: Option<NonZeroUsize>,
 
     polled_futures: HashMap<usize, Pin<Box<Del::Output>>>,
-    completed_items: Option<BTreeMap<usize, Del::Item>>,
-    _collection: PhantomData<C>,
+    completed_items: BTreeMap<usize, Option<Del::Item>>,
+    last_provided_idx: Option<usize>,
+
+    collection: Option<C>,
 }
 
 impl<'a, Del: Deluge<'a>, C: Default> Collect<'a, Del, C> {
@@ -31,20 +33,22 @@ impl<'a, Del: Deluge<'a>, C: Default> Collect<'a, Del, C> {
             concurrency: concurrency.into().and_then(NonZeroUsize::new),
 
             polled_futures: HashMap::new(),
-            completed_items: Some(BTreeMap::new()),
-            _collection: PhantomData,
+            completed_items: BTreeMap::new(),
+            last_provided_idx: None,
+
+            collection: Some(C::default()),
         }
     }
 }
 
-impl<'a, Del, C> Future for Collect<'a, Del, C>
+impl<'a, Del, C> Stream for Collect<'a, Del, C>
 where
     Del: Deluge<'a> + 'a,
     C: Default + Extend<Del::Item>,
 {
-    type Output = C;
+    type Item = Del::Item;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<C> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.as_mut().project();
 
         loop {
@@ -83,11 +87,7 @@ where
                             // Drop the items that should be ignored on the floor.
                             // The indexes in the `completed_items` map don't need
                             // to be contignous, it's enough for them to be monotonic
-                            if let Some(v) = v {
-                                if let Some(completed_items) = this.completed_items {
-                                    completed_items.insert(*idx, v);
-                                }
-                            }
+                            this.completed_items.insert(*idx, v);
                             false
                         }
                         _ => true,
@@ -105,15 +105,42 @@ where
             }
         }
 
-        // If all futures have finished, collect the results into the output
-        if this.polled_futures.is_empty() && this.deluge.is_none() {
-            let items = this.completed_items.take().unwrap().into_values();
+        loop {
+            let idx_to_provide = this.last_provided_idx.map(|x| x + 1).unwrap_or(0);
+            if let Some(val) = this.completed_items.get_mut(&idx_to_provide) {
+                *this.last_provided_idx = Some(idx_to_provide);
+                // If we saw an item, always instruct the waker to try again
+                cx.waker().wake_by_ref();
 
-            let mut collection: C = Default::default();
-            collection.extend(items);
-            Poll::Ready(collection)
-        } else {
-            Poll::Pending
+                if val.is_some() {
+                    return Poll::Ready(Some(val.take().unwrap()));
+                }
+            } else if this.polled_futures.is_empty() {
+                // Our input has been exhausted, nothing more to see
+                return Poll::Ready(None);
+            } else {
+                return Poll::Pending;
+            }
+        }
+    }
+}
+
+
+impl<'a, Del, C> Future for Collect<'a, Del, C>
+where
+    Del: Deluge<'a> + 'a,
+    C: Default + Extend<Del::Item>,
+{
+    type Output = C;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<C> {
+        match self.as_mut().poll_next(cx) {
+            Poll::Ready(Some(v)) => {
+                self.collection.as_mut().unwrap().extend_one(v);
+                Poll::Pending
+            },
+            Poll::Ready(None) => Poll::Ready(self.collection.take().unwrap()),
+            Poll::Pending => Poll::Pending,
         }
     }
 }

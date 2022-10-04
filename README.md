@@ -16,6 +16,7 @@ Operations that apply to individual elements like maps and filters **do not** al
 They simply wrap each element in another future but they do not control the way these processed elements are evaluated.
 It is the collector that controls the evaluation strategy.
 At the moment there are two basic collectors supplied: a concurrent and a parallel one.
+Where there is a decision between performance and ease of use to be made, we are likely to fall on the side of ease of use.
 
 The concurrent collector accepts an optional concurrency limit.
 If it is specified, at most the number of futures equal to that limit will be evaluated at once.

@@ -4,6 +4,7 @@
 #![feature(map_first_last)]
 #![feature(let_chains)]
 #![feature(stmt_expr_attributes)]
+#![feature(extend_one)]
 
 //! # Deluge is (not) a Stream
 //!
