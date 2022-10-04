@@ -44,7 +44,6 @@ impl<'a, Del: Deluge<'a>, C: Default> Collect<'a, Del, C> {
 impl<'a, Del, C> Stream for Collect<'a, Del, C>
 where
     Del: Deluge<'a> + 'a,
-    C: Default + Extend<Del::Item>,
 {
     type Item = Del::Item;
 

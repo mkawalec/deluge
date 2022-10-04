@@ -7,6 +7,7 @@ pub mod fold;
 pub mod fold_par;
 pub mod map;
 pub mod take;
+pub mod zip;
 
 pub(crate) use collect::*;
 #[cfg(feature = "parallel")]
@@ -17,3 +18,4 @@ pub(crate) use fold::*;
 pub(crate) use fold_par::*;
 pub(crate) use map::*;
 pub(crate) use take::*;
+pub(crate) use zip::*;
