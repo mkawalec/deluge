@@ -10,24 +10,24 @@ use futures::join;
 
 
 #[pin_project]
-pub struct Zip<Del1, Del2>
+pub struct Zip<'a, Del1, Del2>
 where
-    Del1: Deluge,
-    Del2: Deluge,
+    Del1: Deluge<'a>,
+    Del2: Deluge<'a>,
 {
     #[pin]
-    first: Collect<Del1, ()>,
+    first: Collect<'a, Del1, ()>,
 
     #[pin]
-    second: Collect<Del2, ()>,
+    second: Collect<'a, Del2, ()>,
 
     finished: bool,
 }
 
-impl<'a, Del1, Del2> Zip<Del1, Del2>
+impl<'a, Del1, Del2> Zip<'a, Del1, Del2>
 where
-    Del1: Deluge,
-    Del2: Deluge,
+    Del1: Deluge<'a>,
+    Del2: Deluge<'a>,
 {
     pub(crate) fn new(
         first: Del1,
@@ -46,14 +46,14 @@ where
     }
 }
 
-struct PreloadedFutures<Del>
-where Del: Deluge
+struct PreloadedFutures<'a, Del>
+where Del: Deluge<'a> 
 {
     storage: VecDeque<Del::Output>,
 }
 
-impl<'a, Del> PreloadedFutures<Del>
-where Del: Deluge
+impl<'a, Del> PreloadedFutures<'a, Del>
+where Del: Deluge<'a> + 'a
 {
     fn preload(mut deluge: Del) -> Self {
         let mut storage = VecDeque::new();
@@ -71,8 +71,8 @@ where Del: Deluge
     }
 }
 
-impl<'a, Del> Deluge for PreloadedFutures<Del>
-where Del: Deluge
+impl<'a, Del> Deluge<'a> for PreloadedFutures<'a, Del>
+where Del: Deluge<'a>
 {
     type Item = Del::Item;
     type Output = Del::Output;
@@ -82,15 +82,15 @@ where Del: Deluge
     }
 }
 
-impl<Del1, Del2> Deluge for Zip<Del1, Del2>
+impl<'a, Del1, Del2> Deluge<'a> for Zip<'a, Del1, Del2>
 where
-    Del1: Deluge,
-    Del2: Deluge,
+    Del1: Deluge<'a> + 'a,
+    Del2: Deluge<'a> + 'a,
 {
     type Item = (Del1::Item, Del2::Item);
     type Output = impl Future<Output = Option<Self::Item>> + 'a;
 
-    fn next(&mut self) -> Option<Self::Output> {
+    fn next(&'a mut self) -> Option<Self::Output> {
         println!("Next entered");
         if self.finished {
             println!("finishd");
