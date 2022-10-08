@@ -1,5 +1,6 @@
 use crate::deluge::Deluge;
 use core::pin::Pin;
+use std::marker::PhantomData;
 use futures::stream::Stream;
 use futures::task::{Context, Poll};
 use pin_project::pin_project;
@@ -9,26 +10,32 @@ use std::default::Default;
 use std::future::Future;
 use std::num::NonZeroUsize;
 
+type DelOutput<Del> = dyn Future<Output = Option<<Del as Deluge>::Item>>;
+
 #[pin_project]
 pub struct Collect<'a, Del, C>
 where
-    Del: Deluge<'a>,
+    Del: Deluge,
 {
     deluge: Option<Del>,
+    _del: PhantomData<&'a Del>,
+
     insert_idx: usize,
     concurrency: Option<NonZeroUsize>,
 
-    polled_futures: HashMap<usize, Pin<Box<Del::Output>>>,
+    polled_futures: HashMap<usize, Pin<Box<DelOutput<Del>>>>,
     completed_items: BTreeMap<usize, Option<Del::Item>>,
 
     last_provided_idx: Option<usize>,
     collection: Option<C>,
 }
 
-impl<'a, Del: Deluge<'a>, C: Default> Collect<'a, Del, C> {
+impl<'a, Del: Deluge, C: Default> Collect<'a, Del, C> {
     pub(crate) fn new(deluge: Del, concurrency: impl Into<Option<usize>>) -> Self {
         Self {
             deluge: Some(deluge),
+            _del: PhantomData,
+
             insert_idx: 0,
             concurrency: concurrency.into().and_then(NonZeroUsize::new),
 
@@ -43,7 +50,7 @@ impl<'a, Del: Deluge<'a>, C: Default> Collect<'a, Del, C> {
 
 impl<'a, Del, C> Stream for Collect<'a, Del, C>
 where
-    Del: Deluge<'a> + 'a,
+    Del: Deluge + 'a,
 {
     type Item = Del::Item;
 
@@ -126,7 +133,7 @@ where
 
 impl<'a, Del, C> Future for Collect<'a, Del, C>
 where
-    Del: Deluge<'a> + 'a,
+    Del: Deluge + 'a,
     C: Default + Extend<Del::Item>,
 {
     type Output = C;

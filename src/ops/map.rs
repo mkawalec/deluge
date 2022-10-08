@@ -12,17 +12,21 @@ impl<Del, F> Map<Del, F> {
     }
 }
 
-impl<'a, InputDel, Fut, F> Deluge<'a> for Map<InputDel, F>
+impl<InputDel, Fut, F> Deluge for Map<InputDel, F>
 where
-    InputDel: Deluge<'a> + 'a,
-    F: FnMut(InputDel::Item) -> Fut + Send + 'a,
-    Fut: Future + Send + 'a,
+    InputDel: Deluge,
+    F: FnMut(InputDel::Item) -> Fut + Send,
+    Fut: Future + Send,
     <Fut as Future>::Output: Send,
+    F: 'static,
+    Fut: 'static,
+    InputDel: 'static,
 {
     type Item = Fut::Output;
-    type Output = impl Future<Output = Option<Self::Item>> + 'a;
+    type Output<'a> = impl Future<Output = Option<Self::Item>> + 'a;
 
-    fn next(&'a mut self) -> Option<Self::Output> {
+    fn next<'a>(&'a mut self) -> Option<Self::Output<'a>>
+    {
         self.deluge.next().map(|item| async {
             let item = item.await;
             if let Some(item) = item {

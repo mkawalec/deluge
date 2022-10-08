@@ -9,15 +9,15 @@ use std::marker::PhantomData;
 use super::collect::Collect;
 
 #[pin_project]
-pub struct Fold<'a, Del, Acc, F, Fut>
+pub struct Fold<Del, Acc, F, Fut>
 where
-    Del: Deluge<'a>,
-    F: FnMut(Acc, Del::Item) -> Fut + Send + 'a,
-    Fut: Future<Output = Acc> + Send + 'a,
+    Del: Deluge,
+    F: FnMut(Acc, Del::Item) -> Fut + Send,
+    Fut: Future<Output = Acc> + Send,
 {
     deluge: Option<Del>,
     #[allow(clippy::type_complexity)]
-    collect_future: Option<Pin<Box<dyn Future<Output = Vec<Del::Item>> + 'a>>>,
+    collect_future: Option<Pin<Box<dyn Future<Output = Vec<Del::Item>>>>>,
     collected_result: Option<std::vec::IntoIter<Del::Item>>,
     current_el_future: Option<Fut>,
 
@@ -28,11 +28,11 @@ where
     _acc_fut: PhantomData<Fut>,
 }
 
-impl<'a, Del, Acc, F, Fut> Fold<'a, Del, Acc, F, Fut>
+impl<Del, Acc, F, Fut> Fold<Del, Acc, F, Fut>
 where
-    Del: Deluge<'a>,
-    F: FnMut(Acc, Del::Item) -> Fut + Send + 'a,
-    Fut: Future<Output = Acc> + Send + 'a,
+    Del: Deluge,
+    F: FnMut(Acc, Del::Item) -> Fut + Send,
+    Fut: Future<Output = Acc> + Send,
 {
     pub(crate) fn new(deluge: Del, concurrency: impl Into<Option<usize>>, acc: Acc, f: F) -> Self {
         Self {
@@ -50,11 +50,11 @@ where
     }
 }
 
-impl<'a, InputDel, Acc, F, Fut> Future for Fold<'a, InputDel, Acc, F, Fut>
+impl<InputDel, Acc, F, Fut> Future for Fold<InputDel, Acc, F, Fut>
 where
-    InputDel: Deluge<'a> + 'a,
-    F: FnMut(Acc, InputDel::Item) -> Fut + Send + 'a,
-    Fut: Future<Output = Acc> + Send + 'a,
+    InputDel: Deluge + 'static,
+    F: FnMut(Acc, InputDel::Item) -> Fut + Send,
+    Fut: Future<Output = Acc> + Send,
 {
     type Output = Acc;
 

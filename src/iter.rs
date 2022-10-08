@@ -17,15 +17,16 @@ where
     }
 }
 
-impl<'a, I> Deluge<'a> for Iter<I>
+impl<I> Deluge for Iter<I>
 where
-    I: Iterator + Send + 'a,
-    <I as Iterator>::Item: Send + 'a,
+    I: Iterator + Send + 'static,
+    <I as Iterator>::Item: Send,
 {
     type Item = I::Item;
-    type Output = impl Future<Output = Option<Self::Item>> + 'a;
+    type Output<'a> = impl Future<Output = Option<Self::Item>> + 'a;
 
-    fn next(&mut self) -> Option<Self::Output> {
+    fn next<'a>(&'a mut self) -> Option<Self::Output<'a>>
+    {
         let item = self.iter.next();
         item.map(|item| future::ready(Some(item)))
     }

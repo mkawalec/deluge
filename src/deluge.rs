@@ -8,9 +8,10 @@ use std::future::Future;
 ///
 /// If `None` is returned from the call to `next`, the Deluge has ran out of items to provide.
 /// Calling `next` again will be unsafe and may lead to panics.
-pub trait Deluge<'a> {
+pub trait Deluge {
     type Item: Send;
-    type Output: Future<Output = Option<Self::Item>> + 'a;
+    type Output<'x>: Future<Output = Option<Self::Item>> + 'x
+        where Self: 'x;
 
-    fn next(&'a mut self) -> Option<Self::Output>;
+    fn next<'a>(&'a mut self) -> Option<Self::Output<'a>>;
 }

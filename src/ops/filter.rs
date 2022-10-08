@@ -1,14 +1,15 @@
-use crate::deluge::Deluge;
-use std::future::Future;
+use crate::{deluge::{Deluge}};
+use std::{future::Future, marker::PhantomData};
 
-pub struct Filter<Del, F> {
+pub struct Filter<'x, Del, F> {
     deluge: Del,
     f: F,
+    _del: PhantomData<&'x Del>
 }
 
-impl<Del, F> Filter<Del, F> {
+impl<'x, Del, F> Filter<'x, Del, F> {
     pub(crate) fn new(deluge: Del, f: F) -> Self {
-        Self { deluge, f }
+        Self { deluge, f, _del: PhantomData }
     }
 }
 
@@ -30,15 +31,16 @@ where
     }
 }
 
-impl<'a, InputDel, F> Deluge<'a> for Filter<InputDel, F>
+impl<'x, InputDel, F> Deluge for Filter<'x, InputDel, F>
 where
-    InputDel: Deluge<'a> + 'a,
+    InputDel: Deluge + 'x,
     for<'b> F: XFn<'b, &'b InputDel::Item, bool> + Send + 'b,
 {
     type Item = InputDel::Item;
-    type Output = impl Future<Output = Option<Self::Item>> + 'a;
+    type Output<'a> where Self: 'a = impl Future<Output = Option<Self::Item>> + 'a;
 
-    fn next(&'a mut self) -> Option<Self::Output> {
+    fn next<'a>(&'a mut self) -> Option<Self::Output<'a>>
+    {
         self.deluge.next().map(|item| async {
             let item = item.await;
             if let Some(item) = item {
