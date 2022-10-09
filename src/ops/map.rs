@@ -15,7 +15,7 @@ impl<Del, F> Map<Del, F> {
 impl<InputDel, Fut, F> Deluge for Map<InputDel, F>
 where
     InputDel: Deluge,
-    F: FnMut(InputDel::Item) -> Fut + Send,
+    F: Fn(InputDel::Item) -> Fut + Send,
     Fut: Future + Send,
     <Fut as Future>::Output: Send,
     F: 'static,
@@ -25,7 +25,7 @@ where
     type Item = Fut::Output;
     type Output<'a> = impl Future<Output = Option<Self::Item>> + 'a;
 
-    fn next<'a>(&'a mut self) -> Option<Self::Output<'a>>
+    fn next<'a>(&'a self) -> Option<Self::Output<'a>>
     {
         self.deluge.next().map(|item| async {
             let item = item.await;

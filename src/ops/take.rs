@@ -1,10 +1,11 @@
 use crate::{deluge::Deluge};
 use futures::Future;
+use std::cell::RefCell;
 
 pub struct Take<Del> {
     deluge: Del,
     how_many: usize,
-    how_many_provided: usize,
+    how_many_provided: RefCell<usize>,
 }
 
 impl<Del> Take<Del> {
@@ -12,7 +13,7 @@ impl<Del> Take<Del> {
         Self {
             deluge,
             how_many,
-            how_many_provided: 0,
+            how_many_provided: RefCell::new(0),
         }
     }
 }
@@ -23,10 +24,11 @@ where
     type Item = Del::Item;
     type Output<'a> = impl Future<Output = Option<Self::Item>> + 'a;
 
-    fn next<'a>(&'a mut self) -> Option<Self::Output<'a>>
+    fn next<'a>(&'a self) -> Option<Self::Output<'a>>
     {
-        if self.how_many_provided < self.how_many {
-            self.how_many_provided += 1;
+        let mut how_many_provided = self.how_many_provided.borrow_mut();
+        if *how_many_provided < self.how_many {
+            *how_many_provided += 1;
             self.deluge.next()
         } else {
             None

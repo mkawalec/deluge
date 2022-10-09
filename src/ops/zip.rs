@@ -3,10 +3,16 @@ use super::collect::Collect;
 use std::collections::VecDeque;
 use std::future::Future;
 use std::marker::PhantomData;
+use std::cell::RefCell;
 use pin_project::pin_project;
 use std::pin::Pin;
 use futures::stream::StreamExt;
 use futures::join;
+
+#[cfg(feature = "tokio")]
+type Mutex<T> = tokio::sync::Mutex<T>;
+#[cfg(feature = "async-std")]
+type Mutex<T> = async_std::sync::Mutex<T>;
 
 
 #[pin_project]
@@ -16,12 +22,12 @@ where
     Del2: Deluge + 'a,
 {
     #[pin]
-    first: Collect<'a, PreloadedFutures<'a, Del1>, ()>,
+    first: Mutex<Collect<'a, PreloadedFutures<'a, Del1>, ()>>,
 
     #[pin]
-    second: Collect<'a, PreloadedFutures<'a, Del2>, ()>,
+    second: Mutex<Collect<'a, PreloadedFutures<'a, Del2>, ()>>,
 
-    provided_elems: usize,
+    provided_elems: RefCell<usize>,
     elems_to_provide: usize,
 }
 
@@ -35,69 +41,24 @@ where
         second: Del2,
         concurrency: impl Into<Option<usize>>,
     ) -> Self {
-        let concurrency = concurrency.into().map(|conc| conc / 2);
+        let concurrency = concurrency.into();
 
         // Preload the futures from each
-        let preloaded1 = PreloadedFutures::preload(first);
-        let preloaded2 = PreloadedFutures::preload(second);
+        let preloaded1 = PreloadedFutures::new(first);
+        let preloaded2 = PreloadedFutures::new(second);
 
         let elems_to_provide = std::cmp::min(preloaded1.len(), preloaded2.len());
 
         Self {
-            first: Collect::new(preloaded1, concurrency.clone()),
-            second: Collect::new(preloaded2, concurrency.clone()),
+            first: Mutex::new(Collect::new(preloaded1, concurrency.clone())),
+            second: Mutex::new(Collect::new(preloaded2, concurrency.clone())),
 
-            provided_elems: 0,
+            provided_elems: RefCell::new(0),
             elems_to_provide,
         }
     }
 }
 
-
-struct PreloadedFutures<'a, Del>
-where Del: Deluge + 'a
-{
-    storage: VecDeque<Pin<Box<Del::Output<'a>>>>,
-    _del: PhantomData<Del>
-}
-
-impl<'a, Del> PreloadedFutures<'a, Del>
-where Del: Deluge + 'a
-{
-    fn preload(mut deluge: Del) -> Self {
-        let mut storage = VecDeque::new();
-        loop {
-            if let Some(v) = deluge.next() {
-                storage.push_back(Box::pin(v));
-            } else {
-                break;
-            }
-        }
-
-        Self {
-            storage,
-            _del: PhantomData,
-        }
-    }
-
-    fn len(&self) -> usize {
-        self.storage.len()
-    }
-}
-
-impl<'a, Del> Deluge for PreloadedFutures<'a, Del>
-where Del: Deluge + 'a
-{
-    type Item = Del::Item;
-    type Output<'x> where Self: 'x = impl Future<Output = Option<Self::Item>> + 'x;
-
-    fn next<'x>(&'x mut self) -> Option<Self::Output<'x>>
-    {
-        self.storage.pop_front().map(|el| async move {
-            el.await
-        })
-    }
-}
 
 impl<'a, Del1, Del2> Deluge for Zip<'a, Del1, Del2>
 where
@@ -107,32 +68,81 @@ where
     type Item = (Del1::Item, Del2::Item);
     type Output<'x> where Self: 'x = impl Future<Output = Option<Self::Item>> + 'x;
 
-    fn next<'x>(&'x mut self) -> Option<Self::Output<'x>>
+    fn next<'x>(&'x self) -> Option<Self::Output<'x>>
     {
-        println!("Next entered");
-        if self.provided_elems >= self.elems_to_provide {
-            println!("finishd");
+        let mut provided_elems = self.provided_elems.borrow_mut();
+        if *provided_elems >= self.elems_to_provide {
             None
         } else {
-            self.provided_elems += 1;
-            println!("returning a promise");
+            *provided_elems += 1;
             Some(async move {
-                println!("returning a future");
-                let mut this = Pin::new(self).project();
-                let (first_el, second_el) = join!(
-                    this.first.next(),
-                    this.second.next()
-                );
-                println!("About to wait");
+                let mut this = Pin::new(self).project_ref();
+                let first_el = {
+                    let mut locked = this.first.lock().await;
+                    locked.next().await
+                };
+                let second_el = {
+                    let mut locked = this.second.lock().await;
+                    locked.next().await
+                };
                 
                 if first_el.is_none() || second_el.is_none() {
-                    println!("We're finished");
                     None
                 } else {
-                    println!("Resutning");
                     Some((first_el.unwrap(), second_el.unwrap()))
                 }
             })
         }
+    }
+}
+
+struct PreloadedFutures<'a, Del>
+where Del: Deluge + 'a
+{
+    storage: RefCell<VecDeque<Pin<Box<Del::Output<'a>>>>>,
+    deluge: Del,
+}
+
+impl<'a, Del> PreloadedFutures<'a, Del>
+where Del: Deluge + 'a
+{
+    fn new(deluge: Del) -> Self {
+        let mut storage = VecDeque::new();
+        let deluge_borrow: &'a Del = unsafe {
+            std::mem::transmute(&deluge)
+        };
+        loop {
+            if let Some(v) = deluge_borrow.next() {
+                storage.push_back(Box::pin(v));
+            } else {
+                break;
+            }
+        }
+        Self {
+            storage: RefCell::new(storage),
+            deluge,
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.storage.borrow().len()
+    }
+}
+
+impl<'a, Del> Deluge for PreloadedFutures<'a, Del>
+where Del: Deluge + 'a
+{
+    type Item = Del::Item;
+    type Output<'x> where Self: 'x = impl Future<Output = Option<Self::Item>> + 'x;
+
+    fn next<'x>(&'x self) -> Option<Self::Output<'x>>
+    {
+        let next_item = {
+            self.storage.borrow_mut().pop_front()
+        };
+
+        next_item.map(|el| async move {
+            el.await
+        })
     }
 }

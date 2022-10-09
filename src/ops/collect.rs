@@ -10,20 +10,20 @@ use std::default::Default;
 use std::future::Future;
 use std::num::NonZeroUsize;
 
-type DelOutput<Del> = dyn Future<Output = Option<<Del as Deluge>::Item>>;
+type DelOutput<'a, Del> = dyn Future<Output = Option<<Del as Deluge>::Item>> + 'a;
 
 #[pin_project]
 pub struct Collect<'a, Del, C>
 where
     Del: Deluge,
 {
-    deluge: Option<Del>,
-    _del: PhantomData<&'a Del>,
+    deluge: Del,
+    deluge_exhausted: bool,
 
     insert_idx: usize,
     concurrency: Option<NonZeroUsize>,
 
-    polled_futures: HashMap<usize, Pin<Box<DelOutput<Del>>>>,
+    polled_futures: HashMap<usize, Pin<Box<DelOutput<'a, Del>>>>,
     completed_items: BTreeMap<usize, Option<Del::Item>>,
 
     last_provided_idx: Option<usize>,
@@ -33,8 +33,8 @@ where
 impl<'a, Del: Deluge, C: Default> Collect<'a, Del, C> {
     pub(crate) fn new(deluge: Del, concurrency: impl Into<Option<usize>>) -> Self {
         Self {
-            deluge: Some(deluge),
-            _del: PhantomData,
+            deluge: deluge,
+            deluge_exhausted: false,
 
             insert_idx: 0,
             concurrency: concurrency.into().and_then(NonZeroUsize::new),
@@ -58,26 +58,26 @@ where
         let this = self.as_mut().project();
 
         loop {
-            while this.deluge.is_some() {
+            while !*this.deluge_exhausted {
                 let concurrency_limit = if let Some(limit) = this.concurrency {
                     limit.get()
                 } else {
                     usize::MAX
                 };
 
-                // Funky stuff, extending the lifetime of the inner future
-                let deluge: &'a mut Del =
-                    unsafe { std::mem::transmute(this.deluge.as_mut().unwrap()) };
-
                 if this.polled_futures.len() < concurrency_limit {
+                    // We **know** that a reference to deluge lives for 'a,
+                    // so it should be safe to force the dilesystem to acknowledge that
+                    let deluge: &'a Del = unsafe {
+                        std::mem::transmute(&mut *this.deluge)
+                    };
                     let next = deluge.next();
                     if let Some(future) = next {
                         this.polled_futures
                             .insert(*this.insert_idx, Box::pin(future));
                         *this.insert_idx += 1;
                     } else {
-                        // Nothing more to pull from the deluge, we can proceed to poll the futures
-                        *this.deluge = None;
+                        *this.deluge_exhausted = true;
                     }
                 } else {
                     // We would exceed the concurrency limit by loading more elements
@@ -106,7 +106,7 @@ where
             //
             // Otherwise if these features need more time to evaluate
             // they will re-enter self::poll through the waker
-            if !this.polled_futures.is_empty() || this.deluge.is_none() {
+            if !this.polled_futures.is_empty() || *this.deluge_exhausted {
                 break;
             }
         }

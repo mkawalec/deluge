@@ -7,6 +7,7 @@ pub mod fold;
 pub mod fold_par;
 pub mod map;
 pub mod take;
+#[cfg(feature = "async-runtime")]
 pub mod zip;
 
 pub(crate) use collect::*;
@@ -18,4 +19,5 @@ pub(crate) use fold::*;
 pub(crate) use fold_par::*;
 pub(crate) use map::*;
 pub(crate) use take::*;
+#[cfg(feature = "async-runtime")]
 pub(crate) use zip::*;

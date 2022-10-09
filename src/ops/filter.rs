@@ -17,16 +17,16 @@ impl<'x, Del, F> Filter<'x, Del, F> {
 /// of an output future with a lifetime of a parameter to a callback function
 pub trait XFn<'a, I: 'a, O> {
     type Output: Future<Output = O> + 'a;
-    fn call(&self, x: I) -> Self::Output;
+    fn call(&'a self, x: &'a I) -> Self::Output;
 }
 
 impl<'a, I: 'a, O, F, Fut> XFn<'a, I, O> for F
 where
-    F: Fn(I) -> Fut,
+    F: Fn(&'a I) -> Fut,
     Fut: Future<Output = O> + 'a,
 {
     type Output = Fut;
-    fn call(&self, x: I) -> Fut {
+    fn call(&'a self, x: &'a I) -> Fut {
         self(x)
     }
 }
@@ -34,12 +34,12 @@ where
 impl<'x, InputDel, F> Deluge for Filter<'x, InputDel, F>
 where
     InputDel: Deluge + 'x,
-    for<'b> F: XFn<'b, &'b InputDel::Item, bool> + Send + 'b,
+    for<'b> F: XFn<'b, InputDel::Item, bool> + Send + 'b,
 {
     type Item = InputDel::Item;
     type Output<'a> where Self: 'a = impl Future<Output = Option<Self::Item>> + 'a;
 
-    fn next<'a>(&'a mut self) -> Option<Self::Output<'a>>
+    fn next<'a>(&'a self) -> Option<Self::Output<'a>>
     {
         self.deluge.next().map(|item| async {
             let item = item.await;

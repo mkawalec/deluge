@@ -26,7 +26,7 @@ use async_std::channel as mpsc;
 type SendError<T> = mpsc::SendError<T>;
 
 type OutstandingFutures<'a, Del> =
-    Arc<Mutex<BTreeMap<usize, Pin<Box<<Del as Deluge<'a>>::Output>>>>>;
+    Arc<Mutex<BTreeMap<usize, Pin<Box<<Del as Deluge<'a>>::Output + 'a>>>>>;
 type CompletedItem<'a, Del> = (usize, Option<<Del as Deluge<'a>>::Item>);
 type Worker<'a> = Pin<Box<dyn Future<Output = ()> + 'a>>;
 
@@ -35,7 +35,8 @@ pub struct CollectPar<'a, Del, C>
 where
     Del: Deluge<'a>,
 {
-    deluge: Option<Del>,
+    deluge: Del,
+    deluge_exhausted: bool,
     worker_count: usize,
     worker_concurrency: Option<NonZeroUsize>,
 
@@ -63,7 +64,8 @@ impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C> {
         workers.reserve_exact(worker_count);
 
         Self {
-            deluge: Some(deluge),
+            deluge: deluge,
+            deluge_exhausted: false,
             worker_count,
             worker_concurrency: worker_concurrency.into().and_then(NonZeroUsize::new),
 
@@ -150,15 +152,18 @@ where
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.as_mut().project();
 
-        if this.deluge.is_some() {
+        if !this.deluge_exhausted {
             let mut outstanding_futures = BTreeMap::new();
             let mut insert_idx = 0;
 
             // Load up all the futures
             loop {
-                // Funky stuff, extending the lifetime of the inner future
-                let deluge: &'a mut Del =
-                    unsafe { std::mem::transmute(this.deluge.as_mut().unwrap()) };
+                // We **know** that a reference to deluge lives for 'a,
+                // so it should be safe to force the dilesystem to acknowledge that
+                let deluge: &'a Del = unsafe {
+                    std::mem::transmute(&mut *this.deluge)
+                };
+
                 let next = deluge.next();
                 if let Some(future) = next {
                     outstanding_futures.insert(insert_idx, Box::pin(future));

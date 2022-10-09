@@ -26,7 +26,7 @@ pub trait DelugeExt: Deluge {
     /// ```
     fn map<Fut, F>(self, f: F) -> Map<Self, F>
     where
-        F: FnMut(Self::Item) -> Fut + Send,
+        F: Fn(Self::Item) -> Fut + Send,
         Fut: Future + Send,
         Self: Sized,
     {
@@ -52,7 +52,7 @@ pub trait DelugeExt: Deluge {
     // ```
     fn filter<'a, F>(self, f: F) -> Filter<'a, Self, F>
     where
-        for<'b> F: XFn<'b, &'b Self::Item, bool> + Send + 'b,
+        for<'b> F: XFn<'b, Self::Item, bool> + Send + 'b,
         Self: Sized,
     {
         Filter::new(self, f)
@@ -162,6 +162,14 @@ pub trait DelugeExt: Deluge {
         Take::new(self, how_many)
     }
 
+    fn zip<'a, Del2>(self, other: Del2, concurrency: impl Into<Option<usize>>) -> Zip<'a, Self, Del2>
+    where
+        Del2: Deluge + 'a,
+        Self: Sized,
+    {
+        Zip::new(self, other, concurrency)
+    }
+
     /// Collects elements in the current `Deluge` into a collection with a desired concurrency
     ///
     /// # Examples
@@ -227,6 +235,7 @@ mod tests {
     use crate::iter::iter;
     use more_asserts::{assert_gt, assert_lt};
     use std::time::{Duration, Instant};
+    use futures::future;
 
     #[tokio::test]
     async fn map_can_be_created() {
@@ -251,7 +260,7 @@ mod tests {
         assert_eq!(vec![2, 4, 6, 8], result);
     }
 
-    /*#[tokio::test]
+    #[tokio::test]
     async fn we_can_go_between_values_and_deluges() {
         let result = [1, 2, 3, 4]
             .into_deluge()
@@ -264,7 +273,7 @@ mod tests {
             .await;
 
         assert_eq!(result, 40);
-    }*/
+    }
 
     #[tokio::test]
     async fn we_wait_cuncurrently() {
@@ -306,7 +315,7 @@ mod tests {
         assert_eq!(result.len(), 15);
     }
 
-    /*#[tokio::test]
+    #[tokio::test]
     async fn take_until_a_limit() {
         let result = (0..100)
             .into_deluge()
@@ -315,9 +324,10 @@ mod tests {
             .await;
 
         assert_eq!(result, 45);
-    }*/
+    }
 
-    /*#[tokio::test]
+    #[cfg(feature = "tokio")]
+    #[tokio::test]
     async fn concurrent_fold() {
         let start = Instant::now();
         let result = iter(0..100)
@@ -332,9 +342,10 @@ mod tests {
         assert_lt!(iteration_took.as_millis(), 200);
 
         assert_eq!(result, 4950);
-    }*/
+    }
 
     #[cfg(feature = "tokio")]
+    #[cfg(feature = "parallel")]
     #[tokio::test]
     async fn parallel_test() {
         let start = Instant::now();
@@ -375,6 +386,7 @@ mod tests {
     }
 
     #[cfg(feature = "tokio")]
+    #[cfg(feature = "parallel")]
     #[tokio::test]
     async fn parallel_fold() {
         let start = Instant::now();
@@ -410,6 +422,33 @@ mod tests {
         assert_lt!(iteration_took.as_millis(), 200);
 
         assert_eq!(result, 11175);
+    }
+
+    #[cfg(feature = "async-runtime")]
+    #[tokio::test]
+    async fn zips_work() {
+        let result = iter(0..100)
+            .zip((10..90).into_deluge(), None)
+            .collect::<Vec<(usize, usize)>>(None)
+            .await;
+
+        assert_eq!(result.len(), 80);
+    }
+
+    #[cfg(feature = "async-runtime")]
+    #[tokio::test]
+    async fn zips_inverted_waits() {
+        let result = iter((0..100).rev())
+            .map(|idx| async move {
+                tokio::time::sleep(Duration::from_millis(idx)).await;
+                idx
+            })
+            .zip((0..100).into_deluge(), None)
+            .collect::<Vec<(u64, u64)>>(None)
+            .await;
+
+        assert_eq!(result.len(), 100);
+        println!("{:?}", result);
     }
 
     // Filter doesn't want to build, I have no idea why.

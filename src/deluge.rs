@@ -13,5 +13,5 @@ pub trait Deluge {
     type Output<'x>: Future<Output = Option<Self::Item>> + 'x
         where Self: 'x;
 
-    fn next<'a>(&'a mut self) -> Option<Self::Output<'a>>;
+    fn next<'a>(&'a self) -> Option<Self::Output<'a>>;
 }

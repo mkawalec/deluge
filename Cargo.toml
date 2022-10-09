@@ -23,9 +23,11 @@ exclude = [
 ]
 
 [features]
+default = ["tokio"]
 parallel = []
-tokio = ["parallel", "dep:tokio"]
-async-std = ["parallel", "dep:async-std"]
+async-runtime = []
+tokio = ["dep:tokio", "async-runtime"]
+async-std = ["dep:async-std", "async-runtime"]
 
 [dependencies]
 async-std = { version = "1.12", features = ["attributes"], optional = true }
