@@ -1,13 +1,15 @@
 use crate::deluge::Deluge;
 use super::collect::Collect;
-use std::collections::VecDeque;
+use std::collections::{VecDeque, HashMap};
 use std::future::Future;
 use std::marker::PhantomData;
 use std::cell::RefCell;
+use std::sync::Arc;
+use std::task::{Waker, Context, Poll};
 use pin_project::pin_project;
 use std::pin::Pin;
 use futures::stream::StreamExt;
-use futures::join;
+use futures::{join, Stream};
 
 #[cfg(feature = "tokio")]
 type Mutex<T> = tokio::sync::Mutex<T>;
@@ -21,14 +23,19 @@ where
     Del1: Deluge + 'a,
     Del2: Deluge + 'a,
 {
-    #[pin]
-    first: Mutex<Collect<'a, PreloadedFutures<'a, Del1>, ()>>,
-
-    #[pin]
-    second: Mutex<Collect<'a, PreloadedFutures<'a, Del2>, ()>>,
+    streams: Mutex<Streams<'a, Del1, Del2>>,
 
     provided_elems: RefCell<usize>,
     elems_to_provide: usize,
+}
+
+struct Streams<'a, Del1, Del2>
+where
+    Del1: Deluge + 'a,
+    Del2: Deluge + 'a,
+{
+    first: Collect<'a, PreloadedFutures<'a, Del1>, ()>,
+    second: Collect<'a, PreloadedFutures<'a, Del2>, ()>,
 }
 
 impl<'a, Del1, Del2> Zip<'a, Del1, Del2>
@@ -50,12 +57,61 @@ where
         let elems_to_provide = std::cmp::min(preloaded1.len(), preloaded2.len());
 
         Self {
-            first: Mutex::new(Collect::new(preloaded1, concurrency.clone())),
-            second: Mutex::new(Collect::new(preloaded2, concurrency.clone())),
+            streams: Mutex::new(Streams {
+                first: Collect::new(preloaded1, concurrency.clone()),
+                second: Collect::new(preloaded2, concurrency.clone()),
+            }),
 
             provided_elems: RefCell::new(0),
             elems_to_provide,
         }
+    }
+}
+
+struct IndexableStream<S: Stream> {
+    stream: S,
+    items: HashMap<usize, Option<S::Item>>,
+    wakers: std::sync::Mutex<HashMap<usize, Waker>>,
+}
+
+impl<S: Stream> IndexableStream<S> {
+    fn new(stream: S) -> Self {
+        Self {
+            stream,
+            items: HashMap::new(),
+            wakers: std::sync::Mutex::new(HashMap::new())
+        }
+    }
+
+    fn get_nth(self: Arc<Self>, element: usize) -> GetNthElement<S> {
+        GetNthElement {
+            indexable: self,
+            element,
+        }
+    }
+}
+
+#[pin_project]
+struct GetNthElement<S: Stream> {
+    indexable: Arc<IndexableStream<S>>,
+    element: usize,
+}
+
+impl<S: Stream> Future for GetNthElement<S> {
+    type Output = Option<S::Item>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.as_mut().project();
+        {
+            let mut wakers = this.indexable.wakers.lock().unwrap();
+            wakers.insert(*this.element, cx.waker().clone());
+        }
+
+        // Figure out which element we are inserting,
+        // insert it and wake the correct waker.
+        // When the stream is exhausted, wake all the remaining wakers
+
+        todo!()
     }
 }
 
@@ -77,13 +133,10 @@ where
             *provided_elems += 1;
             Some(async move {
                 let mut this = Pin::new(self).project_ref();
-                let first_el = {
-                    let mut locked = this.first.lock().await;
-                    locked.next().await
-                };
-                let second_el = {
-                    let mut locked = this.second.lock().await;
-                    locked.next().await
+
+                let (first_el, second_el) = {
+                    let mut streams = this.streams.lock().await;
+                    (streams.first.next().await, streams.second.next().await)
                 };
                 
                 if first_el.is_none() || second_el.is_none() {

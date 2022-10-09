@@ -280,7 +280,7 @@ mod tests {
         let start = Instant::now();
         let result = iter(0..100)
             .map(|idx| async move {
-                tokio::time::sleep(Duration::from_millis(100)).await;
+                tokio::time::sleep(Duration::from_millis(100 - (idx as u64))).await;
                 idx
             })
             .collect::<Vec<usize>>(None)
