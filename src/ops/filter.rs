@@ -31,15 +31,15 @@ where
     }
 }
 
-impl<'x, InputDel, F> Deluge for Filter<'x, InputDel, F>
+impl<'a, InputDel, F> Deluge for Filter<'a, InputDel, F>
 where
-    InputDel: Deluge + 'x,
+    InputDel: Deluge + 'a,
     for<'b> F: XFn<'b, InputDel::Item, bool> + Send + 'b,
 {
     type Item = InputDel::Item;
-    type Output<'a> where Self: 'a = impl Future<Output = Option<Self::Item>> + 'a;
+    type Output<'x> = impl Future<Output = Option<Self::Item>> + 'x where Self: 'x;
 
-    fn next<'a>(&'a self) -> Option<Self::Output<'a>>
+    fn next<'x>(&'x self) -> Option<Self::Output<'x>>
     {
         self.deluge.next().map(|item| async {
             let item = item.await;

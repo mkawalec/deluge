@@ -43,7 +43,7 @@ impl<'a, Del> Deluge for PreloadedFutures<'a, Del>
 where Del: Deluge + 'a
 {
     type Item = Del::Item;
-    type Output<'x> where Self: 'x = impl Future<Output = Option<Self::Item>> + 'x;
+    type Output<'x> = impl Future<Output = Option<Self::Item>> + 'x where Self: 'x;
 
     fn next<'x>(&'x self) -> Option<Self::Output<'x>>
     {
