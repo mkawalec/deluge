@@ -1,9 +1,9 @@
 pub mod collect;
-#[cfg(feature = "parallel")]
+#[cfg(feature = "async-runtime")]
 pub mod collect_par;
 pub mod filter;
 pub mod fold;
-#[cfg(feature = "parallel")]
+#[cfg(feature = "async-runtime")]
 pub mod fold_par;
 pub mod map;
 pub mod take;
@@ -11,11 +11,11 @@ pub mod take;
 pub mod zip;
 
 pub(crate) use collect::*;
-#[cfg(feature = "parallel")]
+#[cfg(feature = "async-runtime")]
 pub(crate) use collect_par::*;
 pub(crate) use filter::*;
 pub(crate) use fold::*;
-#[cfg(feature = "parallel")]
+#[cfg(feature = "async-runtime")]
 pub(crate) use fold_par::*;
 pub(crate) use map::*;
 pub(crate) use take::*;

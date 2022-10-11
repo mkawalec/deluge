@@ -123,7 +123,7 @@ pub trait DelugeExt: Deluge {
     /// assert_eq!(result, 4950);
     /// # });
     /// ```
-    #[cfg(feature = "parallel")]
+    #[cfg(feature = "async-runtime")]
     fn fold_par<'a, Acc, F, Fut>(
         self,
         worker_count: impl Into<Option<usize>>,
@@ -214,7 +214,7 @@ pub trait DelugeExt: Deluge {
     /// assert_eq!(result.len(), 100);
     /// # });
     /// ```
-    #[cfg(feature = "parallel")]
+    #[cfg(feature = "async-runtime")]
     fn collect_par<'a, C>(
         self,
         worker_count: impl Into<Option<usize>>,
@@ -344,7 +344,6 @@ mod tests {
     }
 
     #[cfg(feature = "tokio")]
-    #[cfg(feature = "parallel")]
     #[tokio::test]
     async fn parallel_test() {
         let start = Instant::now();
@@ -365,7 +364,6 @@ mod tests {
     }
 
     #[cfg(feature = "async-std")]
-    #[cfg(feature = "parallel")]
     #[async_std::test]
     async fn parallel_test() {
         let start = Instant::now();
@@ -386,7 +384,6 @@ mod tests {
     }
 
     #[cfg(feature = "tokio")]
-    #[cfg(feature = "parallel")]
     #[tokio::test]
     async fn parallel_fold() {
         let start = Instant::now();
@@ -406,7 +403,6 @@ mod tests {
     }
 
     #[cfg(feature = "async-std")]
-    #[cfg(feature = "parallel")]
     #[async_std::test]
     async fn parallel_fold() {
         let start = Instant::now();
@@ -439,12 +435,20 @@ mod tests {
     #[cfg(feature = "async-runtime")]
     #[tokio::test]
     async fn zips_inverted_waits() {
+        let other_deluge = (0..100).into_deluge()
+            .map(|idx| async move {
+                // We sleep here so first element from this Deluge 
+                // only becomes available with the last element from the next one
+                tokio::time::sleep(Duration::from_millis(idx)).await;
+                idx
+            });
+
         let result = iter((0..100).rev())
             .map(|idx| async move {
                 tokio::time::sleep(Duration::from_millis(idx)).await;
                 idx
             })
-            .zip((0..100).into_deluge(), None)
+            .zip(other_deluge, None)
             .collect::<Vec<(u64, u64)>>(None)
             .await;
 

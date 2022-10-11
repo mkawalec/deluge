@@ -1,6 +1,6 @@
 [package]
 name = "deluge"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Michał Kawalec <michal@monad.cat>"]
 license = "MPL-2.0"
 description = """
@@ -24,7 +24,6 @@ exclude = [
 
 [features]
 default = ["tokio"]
-parallel = []
 async-runtime = []
 tokio = ["dep:tokio", "async-runtime"]
 async-std = ["dep:async-std", "async-runtime"]
