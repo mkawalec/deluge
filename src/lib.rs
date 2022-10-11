@@ -81,6 +81,7 @@
 //! # });
 //! ```
 
+mod helpers;
 mod deluge;
 mod deluge_ext;
 mod into_deluge;

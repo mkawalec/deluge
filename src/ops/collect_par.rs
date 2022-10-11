@@ -26,14 +26,14 @@ use async_std::channel as mpsc;
 type SendError<T> = mpsc::SendError<T>;
 
 type OutstandingFutures<'a, Del> =
-    Arc<Mutex<BTreeMap<usize, Pin<Box<<Del as Deluge<'a>>::Output + 'a>>>>>;
-type CompletedItem<'a, Del> = (usize, Option<<Del as Deluge<'a>>::Item>);
+    Arc<Mutex<BTreeMap<usize, Pin<Box<<Del as Deluge>::Output<'a>>>>>>;
+type CompletedItem<Del> = (usize, Option<<Del as Deluge>::Item>);
 type Worker<'a> = Pin<Box<dyn Future<Output = ()> + 'a>>;
 
 #[pin_project]
 pub struct CollectPar<'a, Del, C>
 where
-    Del: Deluge<'a>,
+    Del: Deluge + 'a,
 {
     deluge: Del,
     deluge_exhausted: bool,
@@ -45,15 +45,15 @@ where
     completed_items: BTreeMap<usize, Option<Del::Item>>,
     #[allow(clippy::type_complexity)]
     completed_channel: Option<(
-        mpsc::Sender<CompletedItem<'a, Del>>,
-        mpsc::Receiver<CompletedItem<'a, Del>>,
+        mpsc::Sender<CompletedItem<Del>>,
+        mpsc::Receiver<CompletedItem<Del>>,
     )>,
 
     last_provided_idx: Option<usize>,
     collection: Option<C>,
 }
 
-impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C> {
+impl<'a, Del: Deluge, C: Default> CollectPar<'a, Del, C> {
     pub(crate) fn new(
         deluge: Del,
         worker_count: impl Into<Option<usize>>,
@@ -86,9 +86,9 @@ impl<'a, Del: Deluge<'a>, C: Default> CollectPar<'a, Del, C> {
 // 2. Each worker starts with worker_concurrency futures
 //    and steals from the central place as needed
 
-fn create_worker<'a, Del: Deluge<'a> + 'a>(
+fn create_worker<'a, Del: Deluge + 'a>(
     outstanding_futures: OutstandingFutures<'a, Del>,
-    completed_channel: mpsc::Sender<CompletedItem<'a, Del>>,
+    completed_channel: mpsc::Sender<CompletedItem<Del>>,
     concurrency: NonZeroUsize,
 ) -> Pin<Box<dyn Future<Output = ()> + 'a>> {
     Box::pin(async move {
@@ -129,7 +129,7 @@ fn create_worker<'a, Del: Deluge<'a> + 'a>(
                 }
             }
 
-            Ok::<(), SendError<CompletedItem<'a, Del>>>(())
+            Ok::<(), SendError<CompletedItem<Del>>>(())
         });
 
         if let Err(_e) = run_worker().await {
@@ -144,7 +144,7 @@ fn create_worker<'a, Del: Deluge<'a> + 'a>(
 
 impl<'a, Del, C> Stream for CollectPar<'a, Del, C>
 where
-    Del: Deluge<'a> + 'a,
+    Del: Deluge + 'a,
     C: Default + Extend<Del::Item>,
 {
     type Item = Del::Item;
@@ -152,7 +152,7 @@ where
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.as_mut().project();
 
-        if !this.deluge_exhausted {
+        if !*this.deluge_exhausted {
             let mut outstanding_futures = BTreeMap::new();
             let mut insert_idx = 0;
 
@@ -169,7 +169,7 @@ where
                     outstanding_futures.insert(insert_idx, Box::pin(future));
                     insert_idx += 1;
                 } else {
-                    *this.deluge = None;
+                    *this.deluge_exhausted = true;
                     break;
                 }
             }
@@ -235,7 +235,7 @@ where
 
 impl<'a, Del, C> Future for CollectPar<'a, Del, C>
 where
-    Del: Deluge<'a> + 'a,
+    Del: Deluge + 'a,
     C: Default + Extend<Del::Item>,
 {
     type Output = C;

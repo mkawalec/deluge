@@ -16,4 +16,6 @@ fmt: setup
 .PHONY=test
 test:
 	cargo test --features tokio
-	cargo test --features async-std
+	cargo test --features tokio,parallel
+	cargo test --no-default-features --features async-std
+	cargo test --no-default-features --features async-std,parallel

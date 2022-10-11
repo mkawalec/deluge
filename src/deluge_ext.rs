@@ -124,7 +124,7 @@ pub trait DelugeExt: Deluge {
     /// # });
     /// ```
     #[cfg(feature = "parallel")]
-    fn fold_par<Acc, F, Fut>(
+    fn fold_par<'a, Acc, F, Fut>(
         self,
         worker_count: impl Into<Option<usize>>,
         worker_concurrency: impl Into<Option<usize>>,
@@ -215,7 +215,7 @@ pub trait DelugeExt: Deluge {
     /// # });
     /// ```
     #[cfg(feature = "parallel")]
-    fn collect_par<C>(
+    fn collect_par<'a, C>(
         self,
         worker_count: impl Into<Option<usize>>,
         worker_concurrency: impl Into<Option<usize>>,
@@ -366,6 +366,7 @@ mod tests {
     }
 
     #[cfg(feature = "async-std")]
+    #[cfg(feature = "parallel")]
     #[async_std::test]
     async fn parallel_test() {
         let start = Instant::now();
@@ -406,6 +407,7 @@ mod tests {
     }
 
     #[cfg(feature = "async-std")]
+    #[cfg(feature = "parallel")]
     #[async_std::test]
     async fn parallel_fold() {
         let start = Instant::now();

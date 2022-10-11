@@ -11,7 +11,7 @@ use super::collect_par::CollectPar;
 #[pin_project]
 pub struct FoldPar<'a, Del, Acc, F, Fut>
 where
-    Del: Deluge<'a>,
+    Del: Deluge,
     F: FnMut(Acc, Del::Item) -> Fut + Send + 'a,
     Fut: Future<Output = Acc> + Send + 'a,
 {
@@ -31,7 +31,7 @@ where
 
 impl<'a, Del, Acc, F, Fut> FoldPar<'a, Del, Acc, F, Fut>
 where
-    Del: Deluge<'a>,
+    Del: Deluge,
     F: FnMut(Acc, Del::Item) -> Fut + Send + 'a,
     Fut: Future<Output = Acc> + Send + 'a,
 {
@@ -60,7 +60,7 @@ where
 
 impl<'a, InputDel, Acc, F, Fut> Future for FoldPar<'a, InputDel, Acc, F, Fut>
 where
-    InputDel: Deluge<'a> + 'a,
+    InputDel: Deluge + 'a,
     F: FnMut(Acc, InputDel::Item) -> Fut + Send + 'a,
     Fut: Future<Output = Acc> + Send + 'a,
 {
