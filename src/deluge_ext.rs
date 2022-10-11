@@ -162,11 +162,11 @@ pub trait DelugeExt: Deluge {
         Take::new(self, how_many)
     }
 
-    /// Combines two Deluges into one with elements being 
+    /// Combines two Deluges into one with elements being
     /// tuples of subsequent elements from each
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use deluge::*;
     ///
