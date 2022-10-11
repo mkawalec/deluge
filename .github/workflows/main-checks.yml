@@ -36,7 +36,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-targets --features ${{ matrix.feature }} --profile ${{ matrix.profile }} -- -D warnings
+          args: --all-targets --no-default-features --features ${{ matrix.feature }} --profile ${{ matrix.profile }} -- -D warnings
 
   format:
     name: cargo fmt
@@ -70,4 +70,4 @@ jobs:
         profile: minimal
     - uses: Swatinem/rust-cache@v1
     - name: Run tests
-      run: cargo test --features tokio --verbose && cargo test --features async-std --verbose
+      run: cargo test --features tokio --verbose && cargo test --no-default-features --features async-std --verbose
