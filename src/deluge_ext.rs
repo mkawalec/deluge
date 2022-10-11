@@ -162,6 +162,25 @@ pub trait DelugeExt: Deluge {
         Take::new(self, how_many)
     }
 
+    /// Combines two Deluges into one with elements being 
+    /// tuples of subsequent elements from each
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use deluge::*;
+    ///
+    /// # futures::executor::block_on(async {
+    /// let result = iter((0..100).rev())
+    ///     .zip((0..90).into_deluge(), None)
+    ///     .collect::<Vec<(u64, u64)>>(None)
+    ///     .await;
+    ///
+    /// assert_eq!(result.len(), 90);
+    /// assert_eq!(result[0], (99, 0));
+    /// assert_eq!(result[1], (98, 1));
+    /// # });
+    /// ```
     fn zip<'a, Del2>(
         self,
         other: Del2,
