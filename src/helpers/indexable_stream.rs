@@ -64,8 +64,7 @@ type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 pub struct GetNthElement<'a, S: Stream + 'a> {
     indexable: Arc<IndexableStream<'a, S>>,
     idx: usize,
-    mutex_guard:
-        Option<BoxFuture<'a, OwnedMutexGuard<InnerIndexableStream<S>>>>,
+    mutex_guard: Option<BoxFuture<'a, OwnedMutexGuard<InnerIndexableStream<S>>>>,
 }
 
 impl<'a, S: Stream + 'a> Future for GetNthElement<'a, S> {

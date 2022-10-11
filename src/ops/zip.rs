@@ -51,14 +51,8 @@ where
 
         Self {
             streams: Mutex::new(Streams {
-                first: Arc::new(IndexableStream::new(Collect::new(
-                    preloaded1,
-                    concurrency,
-                ))),
-                second: Arc::new(IndexableStream::new(Collect::new(
-                    preloaded2,
-                    concurrency,
-                ))),
+                first: Arc::new(IndexableStream::new(Collect::new(preloaded1, concurrency))),
+                second: Arc::new(IndexableStream::new(Collect::new(preloaded2, concurrency))),
             }),
 
             provided_elems: RefCell::new(0),
