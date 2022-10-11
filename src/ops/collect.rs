@@ -32,7 +32,7 @@ where
 impl<'a, Del: Deluge, C: Default> Collect<'a, Del, C> {
     pub(crate) fn new(deluge: Del, concurrency: impl Into<Option<usize>>) -> Self {
         Self {
-            deluge: deluge,
+            deluge,
             deluge_exhausted: false,
 
             insert_idx: 0,

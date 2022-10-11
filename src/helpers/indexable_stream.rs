@@ -58,12 +58,14 @@ impl<'a, S: Stream + 'a> IndexableStream<'a, S> {
     }
 }
 
+type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
+
 #[pin_project]
 pub struct GetNthElement<'a, S: Stream + 'a> {
     indexable: Arc<IndexableStream<'a, S>>,
     idx: usize,
     mutex_guard:
-        Option<Pin<Box<dyn Future<Output = OwnedMutexGuard<InnerIndexableStream<S>>> + 'a>>>,
+        Option<BoxFuture<'a, OwnedMutexGuard<InnerIndexableStream<S>>>>,
 }
 
 impl<'a, S: Stream + 'a> Future for GetNthElement<'a, S> {
@@ -121,13 +123,13 @@ impl<'a, S: Stream + 'a> Future for GetNthElement<'a, S> {
                     match Pin::new(&mut next_promise).poll(cx) {
                         Poll::Pending => {
                             inner.next_promise = Some(next_promise);
-                            return Poll::Pending;
+                            Poll::Pending
                         }
                         Poll::Ready((None, _)) => {
                             inner.exhausted = true;
                             wakers.values().for_each(|waker| waker.wake_by_ref());
 
-                            return Poll::Ready(None);
+                            Poll::Ready(None)
                         }
                         Poll::Ready((Some(v), stream)) => {
                             inner.stream = Some(stream);
@@ -136,7 +138,7 @@ impl<'a, S: Stream + 'a> Future for GetNthElement<'a, S> {
                                 wakers.remove(this.idx);
 
                                 inner.current_index += 1;
-                                return Poll::Ready(Some(v));
+                                Poll::Ready(Some(v))
                             } else {
                                 let current_index = inner.current_index;
                                 inner.items.insert(current_index, v);
@@ -145,12 +147,12 @@ impl<'a, S: Stream + 'a> Future for GetNthElement<'a, S> {
                                 }
 
                                 inner.current_index += 1;
-                                return Poll::Pending;
+                                Poll::Pending
                             }
                         }
                     }
                 } else {
-                    return Poll::Pending;
+                    Poll::Pending
                 }
             }
         }

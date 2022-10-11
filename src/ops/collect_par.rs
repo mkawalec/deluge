@@ -64,7 +64,7 @@ impl<'a, Del: Deluge, C: Default> CollectPar<'a, Del, C> {
         workers.reserve_exact(worker_count);
 
         Self {
-            deluge: deluge,
+            deluge,
             deluge_exhausted: false,
             worker_count,
             worker_concurrency: worker_concurrency.into().and_then(NonZeroUsize::new),

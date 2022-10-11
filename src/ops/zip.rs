@@ -53,11 +53,11 @@ where
             streams: Mutex::new(Streams {
                 first: Arc::new(IndexableStream::new(Collect::new(
                     preloaded1,
-                    concurrency.clone(),
+                    concurrency,
                 ))),
                 second: Arc::new(IndexableStream::new(Collect::new(
                     preloaded2,
-                    concurrency.clone(),
+                    concurrency,
                 ))),
             }),
 

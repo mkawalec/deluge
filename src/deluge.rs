@@ -14,5 +14,5 @@ pub trait Deluge {
     where
         Self: 'x;
 
-    fn next<'a>(&'a self) -> Option<Self::Output<'a>>;
+    fn next(&self) -> Option<Self::Output<'_>>;
 }
