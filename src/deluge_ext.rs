@@ -439,7 +439,7 @@ mod tests {
     #[cfg(feature = "async-runtime")]
     #[tokio::test]
     async fn zips_inverted_waits() {
-        let other_deluge = (0..100).into_deluge().map(|idx| async move {
+        let other_deluge = (0..90).into_deluge().map(|idx| async move {
             // We sleep here so first element from this Deluge
             // only becomes available with the last element from the next one
             tokio::time::sleep(Duration::from_millis(idx)).await;
@@ -455,7 +455,7 @@ mod tests {
             .collect::<Vec<(u64, u64)>>(None)
             .await;
 
-        assert_eq!(result.len(), 100);
+        assert_eq!(result.len(), 90);
         for (idx, (fst, snd)) in result.into_iter().enumerate() {
             assert_eq!(idx as u64, 99 - fst);
             assert_eq!(idx as u64, snd);

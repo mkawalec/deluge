@@ -88,10 +88,9 @@ where
                     )
                 };
 
-                if first_el.is_none() || second_el.is_none() {
-                    None
-                } else {
-                    Some((first_el.unwrap(), second_el.unwrap()))
+                match (first_el, second_el) {
+                    (Some(first), Some(second)) => Some((first, second)),
+                    _ => None,
                 }
             })
         }
