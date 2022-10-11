@@ -85,10 +85,10 @@ where
 
             *provided_elems += 1;
             Some(async move {
-                let mut this = Pin::new(self).project_ref();
+                let this = Pin::new(self).project_ref();
 
                 let (first_el, second_el) = {
-                    let mut streams = this.streams.lock().await;
+                    let streams = this.streams.lock().await;
                     (streams.first.clone().get_nth(current_index).await, streams.second.clone().get_nth(current_index).await)
                 };
                 

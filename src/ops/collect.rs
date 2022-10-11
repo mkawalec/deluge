@@ -1,6 +1,5 @@
 use crate::deluge::Deluge;
 use core::pin::Pin;
-use std::marker::PhantomData;
 use futures::stream::Stream;
 use futures::task::{Context, Poll};
 use pin_project::pin_project;

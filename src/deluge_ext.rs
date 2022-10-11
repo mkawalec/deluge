@@ -235,7 +235,6 @@ mod tests {
     use crate::iter::iter;
     use more_asserts::{assert_gt, assert_lt};
     use std::time::{Duration, Instant};
-    use futures::future;
 
     #[tokio::test]
     async fn map_can_be_created() {

@@ -3,13 +3,14 @@ use crate::deluge::Deluge;
 use std::collections::VecDeque;
 use std::future::Future;
 use std::cell::RefCell;
+use std::marker::PhantomData;
 use std::pin::Pin;
 
 pub struct PreloadedFutures<'a, Del>
 where Del: Deluge + 'a
 {
     storage: RefCell<VecDeque<Pin<Box<Del::Output<'a>>>>>,
-    deluge: Del,
+    _del: PhantomData<Del>,
 }
 
 impl<'a, Del> PreloadedFutures<'a, Del>
@@ -29,7 +30,7 @@ where Del: Deluge + 'a
         }
         Self {
             storage: RefCell::new(storage),
-            deluge,
+            _del: PhantomData,
         }
     }
 
