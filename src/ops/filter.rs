@@ -1,14 +1,19 @@
 use crate::deluge::Deluge;
-use std::future::Future;
+use std::{future::Future, marker::PhantomData};
 
-pub struct Filter<Del, F> {
+pub struct Filter<'x, Del, F> {
     deluge: Del,
     f: F,
+    _del: PhantomData<&'x Del>,
 }
 
-impl<Del, F> Filter<Del, F> {
+impl<'x, Del, F> Filter<'x, Del, F> {
     pub(crate) fn new(deluge: Del, f: F) -> Self {
-        Self { deluge, f }
+        Self {
+            deluge,
+            f,
+            _del: PhantomData,
+        }
     }
 }
 
@@ -16,29 +21,29 @@ impl<Del, F> Filter<Del, F> {
 /// of an output future with a lifetime of a parameter to a callback function
 pub trait XFn<'a, I: 'a, O> {
     type Output: Future<Output = O> + 'a;
-    fn call(&self, x: I) -> Self::Output;
+    fn call(&'a self, x: &'a I) -> Self::Output;
 }
 
 impl<'a, I: 'a, O, F, Fut> XFn<'a, I, O> for F
 where
-    F: Fn(I) -> Fut,
+    F: Fn(&'a I) -> Fut,
     Fut: Future<Output = O> + 'a,
 {
     type Output = Fut;
-    fn call(&self, x: I) -> Fut {
+    fn call(&'a self, x: &'a I) -> Fut {
         self(x)
     }
 }
 
-impl<'a, InputDel, F> Deluge<'a> for Filter<InputDel, F>
+impl<'a, InputDel, F> Deluge for Filter<'a, InputDel, F>
 where
-    InputDel: Deluge<'a> + 'a,
-    for<'b> F: XFn<'b, &'b InputDel::Item, bool> + Send + 'b,
+    InputDel: Deluge + 'a,
+    for<'b> F: XFn<'b, InputDel::Item, bool> + Send + 'b,
 {
     type Item = InputDel::Item;
-    type Output = impl Future<Output = Option<Self::Item>> + 'a;
+    type Output<'x> = impl Future<Output = Option<Self::Item>> + 'x where Self: 'x;
 
-    fn next(&'a mut self) -> Option<Self::Output> {
+    fn next(&self) -> Option<Self::Output<'_>> {
         self.deluge.next().map(|item| async {
             let item = item.await;
             if let Some(item) = item {

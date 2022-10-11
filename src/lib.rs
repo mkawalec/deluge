@@ -82,6 +82,7 @@
 
 mod deluge;
 mod deluge_ext;
+mod helpers;
 mod into_deluge;
 mod iter;
 mod ops;

@@ -4,10 +4,10 @@ use std::future::Future;
 use crate::deluge::Deluge;
 use crate::ops::*;
 
-impl<'a, T> DelugeExt<'a> for T where T: Deluge<'a> {}
+impl<T> DelugeExt for T where T: Deluge {}
 
 /// Exposes easy to use Deluge operations. **This should be your first step**
-pub trait DelugeExt<'a>: Deluge<'a> {
+pub trait DelugeExt: Deluge {
     /// Transforms each element by applying an asynchronous function `f` to it
     ///
     /// # Examples
@@ -26,7 +26,7 @@ pub trait DelugeExt<'a>: Deluge<'a> {
     /// ```
     fn map<Fut, F>(self, f: F) -> Map<Self, F>
     where
-        F: FnMut(Self::Item) -> Fut + Send + 'a,
+        F: Fn(Self::Item) -> Fut + Send,
         Fut: Future + Send,
         Self: Sized,
     {
@@ -50,9 +50,9 @@ pub trait DelugeExt<'a>: Deluge<'a> {
     // # });
     //
     // ```
-    fn filter<F>(self, f: F) -> Filter<Self, F>
+    fn filter<'a, F>(self, f: F) -> Filter<'a, Self, F>
     where
-        for<'b> F: XFn<'b, &'b Self::Item, bool> + Send + 'b,
+        for<'b> F: XFn<'b, Self::Item, bool> + Send + 'b,
         Self: Sized,
     {
         Filter::new(self, f)
@@ -95,10 +95,10 @@ pub trait DelugeExt<'a>: Deluge<'a> {
         concurrency: impl Into<Option<usize>>,
         acc: Acc,
         f: F,
-    ) -> Fold<'a, Self, Acc, F, Fut>
+    ) -> Fold<Self, Acc, F, Fut>
     where
-        F: FnMut(Acc, Self::Item) -> Fut + Send + 'a,
-        Fut: Future<Output = Acc> + Send + 'a,
+        F: FnMut(Acc, Self::Item) -> Fut + Send,
+        Fut: Future<Output = Acc> + Send,
         Self: Sized,
     {
         Fold::new(self, concurrency, acc, f)
@@ -123,8 +123,8 @@ pub trait DelugeExt<'a>: Deluge<'a> {
     /// assert_eq!(result, 4950);
     /// # });
     /// ```
-    #[cfg(feature = "parallel")]
-    fn fold_par<Acc, F, Fut>(
+    #[cfg(feature = "async-runtime")]
+    fn fold_par<'a, Acc, F, Fut>(
         self,
         worker_count: impl Into<Option<usize>>,
         worker_concurrency: impl Into<Option<usize>>,
@@ -162,6 +162,18 @@ pub trait DelugeExt<'a>: Deluge<'a> {
         Take::new(self, how_many)
     }
 
+    fn zip<'a, Del2>(
+        self,
+        other: Del2,
+        concurrency: impl Into<Option<usize>>,
+    ) -> Zip<'a, Self, Del2>
+    where
+        Del2: Deluge + 'a,
+        Self: Sized,
+    {
+        Zip::new(self, other, concurrency)
+    }
+
     /// Collects elements in the current `Deluge` into a collection with a desired concurrency
     ///
     /// # Examples
@@ -177,7 +189,7 @@ pub trait DelugeExt<'a>: Deluge<'a> {
     /// assert_eq!(result.len(), 100);
     /// # });
     /// ```
-    fn collect<C>(self, concurrency: impl Into<Option<usize>>) -> Collect<'a, Self, C>
+    fn collect<'a, C>(self, concurrency: impl Into<Option<usize>>) -> Collect<'a, Self, C>
     where
         C: Default + Extend<Self::Item>,
         Self: Sized,
@@ -206,8 +218,8 @@ pub trait DelugeExt<'a>: Deluge<'a> {
     /// assert_eq!(result.len(), 100);
     /// # });
     /// ```
-    #[cfg(feature = "parallel")]
-    fn collect_par<C>(
+    #[cfg(feature = "async-runtime")]
+    fn collect_par<'a, C>(
         self,
         worker_count: impl Into<Option<usize>>,
         worker_concurrency: impl Into<Option<usize>>,
@@ -271,7 +283,7 @@ mod tests {
         let start = Instant::now();
         let result = iter(0..100)
             .map(|idx| async move {
-                tokio::time::sleep(Duration::from_millis(100)).await;
+                tokio::time::sleep(Duration::from_millis(100 - (idx as u64))).await;
                 idx
             })
             .collect::<Vec<usize>>(None)
@@ -317,6 +329,7 @@ mod tests {
         assert_eq!(result, 45);
     }
 
+    #[cfg(feature = "tokio")]
     #[tokio::test]
     async fn concurrent_fold() {
         let start = Instant::now();
@@ -410,6 +423,43 @@ mod tests {
         assert_lt!(iteration_took.as_millis(), 200);
 
         assert_eq!(result, 11175);
+    }
+
+    #[cfg(feature = "async-runtime")]
+    #[tokio::test]
+    async fn zips_work() {
+        let result = iter(0..100)
+            .zip((10..90).into_deluge(), None)
+            .collect::<Vec<(usize, usize)>>(None)
+            .await;
+
+        assert_eq!(result.len(), 80);
+    }
+
+    #[cfg(feature = "async-runtime")]
+    #[tokio::test]
+    async fn zips_inverted_waits() {
+        let other_deluge = (0..90).into_deluge().map(|idx| async move {
+            // We sleep here so first element from this Deluge
+            // only becomes available with the last element from the next one
+            tokio::time::sleep(Duration::from_millis(idx)).await;
+            idx
+        });
+
+        let result = iter((0..100).rev())
+            .map(|idx| async move {
+                tokio::time::sleep(Duration::from_millis(idx)).await;
+                idx
+            })
+            .zip(other_deluge, None)
+            .collect::<Vec<(u64, u64)>>(None)
+            .await;
+
+        assert_eq!(result.len(), 90);
+        for (idx, (fst, snd)) in result.into_iter().enumerate() {
+            assert_eq!(idx as u64, 99 - fst);
+            assert_eq!(idx as u64, snd);
+        }
     }
 
     // Filter doesn't want to build, I have no idea why.
