@@ -61,6 +61,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    strategy:
+      fail-fast: false
+      matrix:
+        feature:
+          - tokio
+          - async-std
     steps:
     - uses: actions/checkout@v3
     - uses: actions-rs/toolchain@v1
@@ -70,4 +76,4 @@ jobs:
         profile: minimal
     - uses: Swatinem/rust-cache@v1
     - name: Run tests
-      run: cargo test --features tokio --verbose && cargo test --no-default-features --features async-std --verbose
+      run: cargo test --no-default-features --features ${{ matrix.feature }}
