@@ -448,7 +448,10 @@ mod tests {
             .await;
 
         assert_eq!(result.len(), 100);
-        println!("{:?}", result);
+        for (idx, (fst, snd)) in result.into_iter().enumerate() {
+            assert_eq!(idx as u64, 99 - fst);
+            assert_eq!(idx as u64, snd);
+        }
     }
 
     // Filter doesn't want to build, I have no idea why.

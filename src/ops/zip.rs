@@ -1,14 +1,15 @@
 use crate::deluge::Deluge;
 use super::collect::Collect;
-use std::collections::{VecDeque, HashMap};
+use std::collections::{VecDeque, HashMap, BTreeMap};
 use std::future::Future;
 use std::marker::PhantomData;
 use std::cell::RefCell;
 use std::sync::Arc;
 use std::task::{Waker, Context, Poll};
 use pin_project::pin_project;
+use tokio::sync::OwnedMutexGuard;
 use std::pin::Pin;
-use futures::stream::StreamExt;
+use futures::stream::{StreamExt, Next, StreamFuture};
 use futures::{join, Stream};
 
 #[cfg(feature = "tokio")]
@@ -34,8 +35,8 @@ where
     Del1: Deluge + 'a,
     Del2: Deluge + 'a,
 {
-    first: Collect<'a, PreloadedFutures<'a, Del1>, ()>,
-    second: Collect<'a, PreloadedFutures<'a, Del2>, ()>,
+    first: Arc<IndexableStream<'a, Collect<'a, PreloadedFutures<'a, Del1>, ()>>>,
+    second: Arc<IndexableStream<'a, Collect<'a, PreloadedFutures<'a, Del2>, ()>>>,
 }
 
 impl<'a, Del1, Del2> Zip<'a, Del1, Del2>
@@ -58,8 +59,8 @@ where
 
         Self {
             streams: Mutex::new(Streams {
-                first: Collect::new(preloaded1, concurrency.clone()),
-                second: Collect::new(preloaded2, concurrency.clone()),
+                first: Arc::new(IndexableStream::new(Collect::new(preloaded1, concurrency.clone()))),
+                second: Arc::new(IndexableStream::new(Collect::new(preloaded2, concurrency.clone()))),
             }),
 
             provided_elems: RefCell::new(0),
@@ -68,50 +69,132 @@ where
     }
 }
 
-struct IndexableStream<S: Stream> {
-    stream: S,
-    items: HashMap<usize, Option<S::Item>>,
-    wakers: std::sync::Mutex<HashMap<usize, Waker>>,
+struct IndexableStream<'a, S: Stream + 'a> {
+    wakers: std::sync::Mutex<BTreeMap<usize, Waker>>,
+    inner: Arc<Mutex<InnerIndexableStream<S>>>,
+    _lifetime: PhantomData<&'a ()>
 }
 
-impl<S: Stream> IndexableStream<S> {
+struct InnerIndexableStream<S: Stream> {
+    stream: Option<Pin<Box<S>>>,
+    items: HashMap<usize, S::Item>,
+    next_promise: Option<StreamFuture<Pin<Box<S>>>>,
+    current_index: usize,
+    exhausted: bool,
+}
+
+impl<'a, S: Stream + 'a> IndexableStream<'a, S> {
     fn new(stream: S) -> Self {
         Self {
-            stream,
-            items: HashMap::new(),
-            wakers: std::sync::Mutex::new(HashMap::new())
+            wakers: std::sync::Mutex::new(BTreeMap::new()),
+            inner: Arc::new(Mutex::new(InnerIndexableStream {
+                stream: Some(Box::pin(stream)),
+                items: HashMap::new(),
+                next_promise: None,
+                current_index: 0,
+                exhausted: false,
+            })),
+            _lifetime: PhantomData,
         }
     }
 
-    fn get_nth(self: Arc<Self>, element: usize) -> GetNthElement<S> {
+    fn get_nth(self: Arc<Self>, idx: usize) -> GetNthElement<'a, S> {
         GetNthElement {
             indexable: self,
-            element,
+            idx,
+            mutex_guard: None,
         }
     }
 }
 
 #[pin_project]
-struct GetNthElement<S: Stream> {
-    indexable: Arc<IndexableStream<S>>,
-    element: usize,
+struct GetNthElement<'a, S: Stream + 'a> {
+    indexable: Arc<IndexableStream<'a, S>>,
+    idx: usize,
+    mutex_guard: Option<Pin<Box<dyn Future<Output = OwnedMutexGuard<InnerIndexableStream<S>>> +'a>>>,
 }
 
-impl<S: Stream> Future for GetNthElement<S> {
+impl<'a, S: Stream + 'a> Future for GetNthElement<'a, S> {
     type Output = Option<S::Item>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project();
-        {
-            let mut wakers = this.indexable.wakers.lock().unwrap();
-            wakers.insert(*this.element, cx.waker().clone());
+        let mut wakers = this.indexable.wakers.lock().unwrap();
+        wakers.insert(*this.idx, cx.waker().clone());
+
+        if this.mutex_guard.is_none() {
+            *this.mutex_guard = Some(Box::pin(this.indexable.inner.clone().lock_owned()));
         }
 
-        // Figure out which element we are inserting,
-        // insert it and wake the correct waker.
-        // When the stream is exhausted, wake all the remaining wakers
+        let mut mutex_guard = this.mutex_guard.take().unwrap();
+        match Pin::new(&mut mutex_guard).poll(cx) {
+            Poll::Pending => {
+                *this.mutex_guard = Some(mutex_guard);
+                Poll::Pending
+            },
+            Poll::Ready(mut inner) => {
+                if inner.exhausted {
+                    wakers.remove(&*this.idx);
+                    if let Some(v) = inner.items.remove(this.idx) {
+                        return Poll::Ready(Some(v));
+                    } else {
+                        return Poll::Ready(None);
+                    }
+                }
 
-        todo!()
+                if let Some(el) = inner.items.remove(this.idx) {
+                    wakers.remove(&*this.idx);
+                    return Poll::Ready(Some(el));
+                }
+
+                let is_first_entry = if let Some(first_entry) = wakers.first_entry() {
+                    *first_entry.key() == *this.idx
+                } else {
+                    false
+                };
+
+                if is_first_entry {
+                    if inner.next_promise.is_none() {
+                        inner.next_promise = Some(inner.stream.take().unwrap().into_future());
+                    }
+                    let mut next_promise = inner.next_promise.take().unwrap();
+
+                    match Pin::new(&mut next_promise).poll(cx) {
+                        Poll::Pending => {
+                            inner.next_promise = Some(next_promise);
+                            return Poll::Pending;
+                        },
+                        Poll::Ready((None, _)) => {
+                            inner.exhausted = true;
+                            wakers.values().for_each(|waker| waker.wake_by_ref());
+                            
+                            return Poll::Ready(None);
+                        },
+                        Poll::Ready((Some(v), stream)) => {
+                            inner.stream = Some(stream);
+
+                            if *this.idx == inner.current_index {
+                                wakers.remove(this.idx);
+
+                                inner.current_index += 1;
+                                return Poll::Ready(Some(v));
+                            } else {
+                                let current_index = inner.current_index;
+                                inner.items.insert(current_index, v);
+                                if let Some(entry) = wakers.first_entry() {
+                                    entry.get().wake_by_ref();
+                                }
+
+                                inner.current_index += 1;
+                                return Poll::Pending;
+                            }
+                        }
+                    }
+                } else {
+                    return Poll::Pending;
+                }
+            }
+        }
     }
 }
 
@@ -130,13 +213,15 @@ where
         if *provided_elems >= self.elems_to_provide {
             None
         } else {
+            let current_index = *provided_elems;
+
             *provided_elems += 1;
             Some(async move {
                 let mut this = Pin::new(self).project_ref();
 
                 let (first_el, second_el) = {
                     let mut streams = this.streams.lock().await;
-                    (streams.first.next().await, streams.second.next().await)
+                    (streams.first.clone().get_nth(current_index).await, streams.second.clone().get_nth(current_index).await)
                 };
                 
                 if first_el.is_none() || second_el.is_none() {
