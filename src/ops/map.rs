@@ -25,8 +25,7 @@ where
     type Item = Fut::Output;
     type Output<'a> = impl Future<Output = Option<Self::Item>> + 'a;
 
-    fn next<'a>(&'a self) -> Option<Self::Output<'a>>
-    {
+    fn next<'a>(&'a self) -> Option<Self::Output<'a>> {
         self.deluge.next().map(|item| async {
             let item = item.await;
             if let Some(item) = item {

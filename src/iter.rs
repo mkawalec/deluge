@@ -1,6 +1,6 @@
 use crate::deluge::Deluge;
-use std::future::{self, Future};
 use std::cell::RefCell;
+use std::future::{self, Future};
 
 pub struct Iter<I> {
     iter: RefCell<I>,
@@ -26,11 +26,8 @@ where
     type Item = I::Item;
     type Output<'a> = impl Future<Output = Option<Self::Item>> + 'a;
 
-    fn next<'a>(&'a self) -> Option<Self::Output<'a>>
-    {
-        let item = {
-            self.iter.borrow_mut().next()
-        };
+    fn next<'a>(&'a self) -> Option<Self::Output<'a>> {
+        let item = { self.iter.borrow_mut().next() };
         item.map(|item| future::ready(Some(item)))
     }
 }

@@ -1,19 +1,18 @@
+use super::collect::Collect;
 use crate::deluge::Deluge;
 use crate::helpers::indexable_stream::*;
 use crate::helpers::preloaded_futures::*;
-use super::collect::Collect;
 
-use std::future::Future;
-use std::cell::RefCell;
-use std::sync::Arc;
 use pin_project::pin_project;
+use std::cell::RefCell;
+use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 
 #[cfg(feature = "tokio")]
 type Mutex<T> = tokio::sync::Mutex<T>;
 #[cfg(feature = "async-std")]
 type Mutex<T> = async_std::sync::Mutex<T>;
-
 
 #[pin_project]
 pub struct Zip<'a, Del1, Del2>
@@ -41,11 +40,7 @@ where
     Del1: Deluge + 'a,
     Del2: Deluge + 'a,
 {
-    pub(crate) fn new(
-        first: Del1,
-        second: Del2,
-        concurrency: impl Into<Option<usize>>,
-    ) -> Self {
+    pub(crate) fn new(first: Del1, second: Del2, concurrency: impl Into<Option<usize>>) -> Self {
         let concurrency = concurrency.into();
 
         // Preload the futures from each
@@ -56,8 +51,14 @@ where
 
         Self {
             streams: Mutex::new(Streams {
-                first: Arc::new(IndexableStream::new(Collect::new(preloaded1, concurrency.clone()))),
-                second: Arc::new(IndexableStream::new(Collect::new(preloaded2, concurrency.clone()))),
+                first: Arc::new(IndexableStream::new(Collect::new(
+                    preloaded1,
+                    concurrency.clone(),
+                ))),
+                second: Arc::new(IndexableStream::new(Collect::new(
+                    preloaded2,
+                    concurrency.clone(),
+                ))),
             }),
 
             provided_elems: RefCell::new(0),
@@ -65,7 +66,6 @@ where
         }
     }
 }
-
 
 impl<'a, Del1, Del2> Deluge for Zip<'a, Del1, Del2>
 where
@@ -75,8 +75,7 @@ where
     type Item = (Del1::Item, Del2::Item);
     type Output<'x> = impl Future<Output = Option<Self::Item>> + 'x where Self: 'x;
 
-    fn next<'x>(&'x self) -> Option<Self::Output<'x>>
-    {
+    fn next<'x>(&'x self) -> Option<Self::Output<'x>> {
         let mut provided_elems = self.provided_elems.borrow_mut();
         if *provided_elems >= self.elems_to_provide {
             None
@@ -89,9 +88,12 @@ where
 
                 let (first_el, second_el) = {
                     let streams = this.streams.lock().await;
-                    (streams.first.clone().get_nth(current_index).await, streams.second.clone().get_nth(current_index).await)
+                    (
+                        streams.first.clone().get_nth(current_index).await,
+                        streams.second.clone().get_nth(current_index).await,
+                    )
                 };
-                
+
                 if first_el.is_none() || second_el.is_none() {
                     None
                 } else {

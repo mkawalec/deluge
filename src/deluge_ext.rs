@@ -162,7 +162,11 @@ pub trait DelugeExt: Deluge {
         Take::new(self, how_many)
     }
 
-    fn zip<'a, Del2>(self, other: Del2, concurrency: impl Into<Option<usize>>) -> Zip<'a, Self, Del2>
+    fn zip<'a, Del2>(
+        self,
+        other: Del2,
+        concurrency: impl Into<Option<usize>>,
+    ) -> Zip<'a, Self, Del2>
     where
         Del2: Deluge + 'a,
         Self: Sized,
@@ -435,13 +439,12 @@ mod tests {
     #[cfg(feature = "async-runtime")]
     #[tokio::test]
     async fn zips_inverted_waits() {
-        let other_deluge = (0..100).into_deluge()
-            .map(|idx| async move {
-                // We sleep here so first element from this Deluge 
-                // only becomes available with the last element from the next one
-                tokio::time::sleep(Duration::from_millis(idx)).await;
-                idx
-            });
+        let other_deluge = (0..100).into_deluge().map(|idx| async move {
+            // We sleep here so first element from this Deluge
+            // only becomes available with the last element from the next one
+            tokio::time::sleep(Duration::from_millis(idx)).await;
+            idx
+        });
 
         let result = iter((0..100).rev())
             .map(|idx| async move {

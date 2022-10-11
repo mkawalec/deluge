@@ -1,31 +1,29 @@
-use std::collections::{HashMap, BTreeMap};
-use std::future::Future;
-use std::marker::PhantomData;
-use std::sync::Arc;
-use std::task::{Waker, Context, Poll};
-use pin_project::pin_project;
-use std::pin::Pin;
 use futures::stream::{StreamExt, StreamFuture};
 use futures::Stream;
+use pin_project::pin_project;
+use std::collections::{BTreeMap, HashMap};
+use std::future::Future;
+use std::marker::PhantomData;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::task::{Context, Poll, Waker};
 
 #[cfg(feature = "tokio")]
 type Mutex<T> = tokio::sync::Mutex<T>;
 #[cfg(feature = "async-std")]
 type Mutex<T> = async_std::sync::Mutex<T>;
 
-
 #[cfg(feature = "tokio")]
 type OwnedMutexGuard<T> = tokio::sync::OwnedMutexGuard<T>;
 #[cfg(feature = "async-std")]
 type OwnedMutexGuard<T> = async_std::sync::MutexGuardArc<T>;
-
 
 /// Stream wrapper allowing it's users to subscribe to an element at a specific index
 /// through `IndexableStream::get_nth`.
 pub struct IndexableStream<'a, S: Stream + 'a> {
     wakers: std::sync::Mutex<BTreeMap<usize, Waker>>,
     inner: Arc<Mutex<InnerIndexableStream<S>>>,
-    _lifetime: PhantomData<&'a ()>
+    _lifetime: PhantomData<&'a ()>,
 }
 
 struct InnerIndexableStream<S: Stream> {
@@ -64,7 +62,8 @@ impl<'a, S: Stream + 'a> IndexableStream<'a, S> {
 pub struct GetNthElement<'a, S: Stream + 'a> {
     indexable: Arc<IndexableStream<'a, S>>,
     idx: usize,
-    mutex_guard: Option<Pin<Box<dyn Future<Output = OwnedMutexGuard<InnerIndexableStream<S>>> +'a>>>,
+    mutex_guard:
+        Option<Pin<Box<dyn Future<Output = OwnedMutexGuard<InnerIndexableStream<S>>> + 'a>>>,
 }
 
 impl<'a, S: Stream + 'a> Future for GetNthElement<'a, S> {
@@ -91,7 +90,7 @@ impl<'a, S: Stream + 'a> Future for GetNthElement<'a, S> {
             Poll::Pending => {
                 *this.mutex_guard = Some(mutex_guard);
                 Poll::Pending
-            },
+            }
             Poll::Ready(mut inner) => {
                 if inner.exhausted {
                     wakers.remove(&*this.idx);
@@ -123,13 +122,13 @@ impl<'a, S: Stream + 'a> Future for GetNthElement<'a, S> {
                         Poll::Pending => {
                             inner.next_promise = Some(next_promise);
                             return Poll::Pending;
-                        },
+                        }
                         Poll::Ready((None, _)) => {
                             inner.exhausted = true;
                             wakers.values().for_each(|waker| waker.wake_by_ref());
-                            
+
                             return Poll::Ready(None);
-                        },
+                        }
                         Poll::Ready((Some(v), stream)) => {
                             inner.stream = Some(stream);
 

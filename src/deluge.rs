@@ -11,7 +11,8 @@ use std::future::Future;
 pub trait Deluge {
     type Item: Send;
     type Output<'x>: Future<Output = Option<Self::Item>> + 'x
-        where Self: 'x;
+    where
+        Self: 'x;
 
     fn next<'a>(&'a self) -> Option<Self::Output<'a>>;
 }

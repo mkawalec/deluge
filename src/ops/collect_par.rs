@@ -160,9 +160,7 @@ where
             loop {
                 // We **know** that a reference to deluge lives for 'a,
                 // so it should be safe to force the dilesystem to acknowledge that
-                let deluge: &'a Del = unsafe {
-                    std::mem::transmute(&mut *this.deluge)
-                };
+                let deluge: &'a Del = unsafe { std::mem::transmute(&mut *this.deluge) };
 
                 let next = deluge.next();
                 if let Some(future) = next {
