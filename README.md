@@ -1,5 +1,14 @@
 # Deluge is (not) a Stream
 
+<div>
+ <p>
+    <a href="https://crates.io/crates/deluge"><img alt="Crate Info" src="https://img.shields.io/crates/v/deluge.svg"/></a>
+    <a href="https://docs.rs/deluge/"><img alt="API Docs" src="https://img.shields.io/badge/docs.rs-deluge-green"/></a>
+    <a href="https://blog.rust-lang.org/2022/09/22/Rust-1.64.0.html"><img alt="Rustc Version 1.64.0+" src="https://img.shields.io/badge/rustc-1.64%2B-lightgrey.svg"/></a>
+  </p>
+
+</div>
+
 Deluge implements parallel and concurrent stream operations while driving the underlying futures concurrently.
 This is in contrast to standard streams which evaluate each future sequentially, leading to large delays on highly concurrent operations.
 
