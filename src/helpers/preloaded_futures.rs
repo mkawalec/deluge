@@ -21,13 +21,10 @@ where
     pub fn new(deluge: Del) -> Self {
         let mut storage = VecDeque::new();
         let deluge_borrow: &'a Del = unsafe { std::mem::transmute(&deluge) };
-        loop {
-            if let Some(v) = deluge_borrow.next() {
-                storage.push_back(Box::pin(v));
-            } else {
-                break;
-            }
+        while let Some(v) = deluge_borrow.next() {
+            storage.push_back(Box::pin(v));
         }
+
         Self {
             storage: RefCell::new(storage),
             _del: PhantomData,
@@ -46,7 +43,7 @@ where
     type Item = Del::Item;
     type Output<'x> = impl Future<Output = Option<Self::Item>> + 'x where Self: 'x;
 
-    fn next<'x>(&'x self) -> Option<Self::Output<'x>> {
+    fn next(&self) -> Option<Self::Output<'_>> {
         let next_item = { self.storage.borrow_mut().pop_front() };
 
         next_item.map(|el| async move { el.await })

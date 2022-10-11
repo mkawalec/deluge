@@ -24,7 +24,7 @@ where
     type Item = Del::Item;
     type Output<'a> = impl Future<Output = Option<Self::Item>> + 'a;
 
-    fn next<'a>(&'a self) -> Option<Self::Output<'a>> {
+    fn next(&self) -> Option<Self::Output<'_>> {
         let mut how_many_provided = self.how_many_provided.borrow_mut();
         if *how_many_provided < self.how_many {
             *how_many_provided += 1;

@@ -69,7 +69,7 @@ where
     type Item = (Del1::Item, Del2::Item);
     type Output<'x> = impl Future<Output = Option<Self::Item>> + 'x where Self: 'x;
 
-    fn next<'x>(&'x self) -> Option<Self::Output<'x>> {
+    fn next(&self) -> Option<Self::Output<'_>> {
         let mut provided_elems = self.provided_elems.borrow_mut();
         if *provided_elems >= self.elems_to_provide {
             None

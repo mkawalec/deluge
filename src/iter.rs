@@ -26,7 +26,7 @@ where
     type Item = I::Item;
     type Output<'a> = impl Future<Output = Option<Self::Item>> + 'a;
 
-    fn next<'a>(&'a self) -> Option<Self::Output<'a>> {
+    fn next(&self) -> Option<Self::Output<'_>> {
         let item = { self.iter.borrow_mut().next() };
         item.map(|item| future::ready(Some(item)))
     }

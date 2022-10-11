@@ -43,7 +43,7 @@ where
     type Item = InputDel::Item;
     type Output<'x> = impl Future<Output = Option<Self::Item>> + 'x where Self: 'x;
 
-    fn next<'x>(&'x self) -> Option<Self::Output<'x>> {
+    fn next(&self) -> Option<Self::Output<'_>> {
         self.deluge.next().map(|item| async {
             let item = item.await;
             if let Some(item) = item {
