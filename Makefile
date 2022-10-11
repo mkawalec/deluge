@@ -19,8 +19,8 @@ fmt-fix: setup
 	cargo fmt
 	cargo clippy --fix --all-targets --features tokio --profile dev -- -D warnings
 	cargo clippy --fix --all-targets --features tokio --profile release -- -D warnings
-	cargo clippy --fix --all-targets --features async-std --profile dev -- -D warnings
-	cargo clippy --fix --all-targets --features async-std --profile release -- -D warnings
+	cargo clippy --fix --all-targets --no-default-features --features async-std --profile dev -- -D warnings
+	cargo clippy --fix --all-targets --no-default-features --features async-std --profile release -- -D warnings
 
 .PHONY=test
 test:
