@@ -35,6 +35,10 @@ pub trait DelugeExt: Deluge {
 
     /// Leaves the elements for which `f` returns a promise evaluating to `true`.
     ///
+    /// # WARNING
+    ///
+    /// Currently has [a breaking bug](https://github.com/mkawalec/deluge/issues/1).
+    ///
     /// # Examples
     ///
     // ```
@@ -43,7 +47,7 @@ pub trait DelugeExt: Deluge {
     // # futures::executor::block_on(async {
     // let result = (0..10).into_deluge()
     //     .filter(|x| async move { x % 2 == 0 })
-    //     .collect::<Vec<usize>>()
+    //     .collect::<Vec<usize>>(None)
     //     .await;
     //
     // assert_eq!(vec![0, 2, 4, 6, 8], result);
@@ -56,6 +60,38 @@ pub trait DelugeExt: Deluge {
         Self: Sized,
     {
         Filter::new(self, f)
+    }
+
+    /// Filters out elements for which a function returns `None`,
+    /// substitutes the elements for the ones there it returns `Some(new_value)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use deluge::*;
+    ///
+    /// # futures::executor::block_on(async {
+    /// let result = (0..10).into_deluge()
+    ///     .filter_map(|x| async move { if x % 2 == 0 {
+    ///             Some(x.to_string())
+    ///         } else {
+    ///             None
+    ///         }
+    ///     })
+    ///     .collect::<Vec<String>>(None)
+    ///     .await;
+    ///
+    /// assert_eq!(vec![0.to_string(), 2.to_string(), 4.to_string(), 6.to_string(), 8.to_string()], result);
+    /// # });
+    ///
+    /// ```
+    fn filter_map<Fut, F>(self, f: F) -> FilterMap<Self, F>
+    where
+        F: Fn(Self::Item) -> Fut + Send,
+        Fut: Future + Send,
+        Self: Sized,
+    {
+        FilterMap::new(self, f)
     }
 
     /// Concurrently accummulates values in the accummulator. The degree of concurrency
@@ -280,6 +316,22 @@ mod tests {
             .await;
 
         assert_eq!(vec![2, 4, 6, 8], result);
+    }
+
+    #[tokio::test]
+    async fn filter_map_works() {
+        let result = iter([1, 2, 3, 4])
+            .filter_map(|x| async move {
+                if x % 2 == 0 {
+                    Some("yes")
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<&str>>(None)
+            .await;
+
+        assert_eq!(vec!["yes", "yes"], result);
     }
 
     #[tokio::test]
