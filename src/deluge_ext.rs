@@ -62,7 +62,8 @@ pub trait DelugeExt: Deluge {
         Filter::new(self, f)
     }
 
-    /// Leaves the elements for which `f` returns a promise evaluating to `true`.
+    /// Filters out elements for which a function returns `None`,
+    /// substitutes the elements for the ones there it returns `Some(new_value)`.
     ///
     /// # Examples
     ///
