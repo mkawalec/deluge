@@ -1,6 +1,6 @@
 [package]
 name = "deluge"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Michał Kawalec <michal@monad.cat>"]
 license = "MPL-2.0"
 description = """

@@ -84,7 +84,7 @@ pub trait DelugeExt: Deluge {
     /// # });
     ///
     /// ```
-    fn filter_map<'a, Fut, F>(self, f: F) -> FilterMap<'a, Self, F>
+    fn filter_map<Fut, F>(self, f: F) -> FilterMap<Self, F>
     where
         F: Fn(Self::Item) -> Fut + Send,
         Fut: Future + Send,

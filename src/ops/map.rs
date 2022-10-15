@@ -18,12 +18,9 @@ where
     F: Fn(InputDel::Item) -> Fut + Send,
     Fut: Future + Send,
     <Fut as Future>::Output: Send,
-    F: 'static,
-    Fut: 'static,
-    InputDel: 'static,
 {
     type Item = Fut::Output;
-    type Output<'a> = impl Future<Output = Option<Self::Item>> + 'a;
+    type Output<'a> = impl Future<Output = Option<Self::Item>> + 'a where Self: 'a;
 
     fn next(&self) -> Option<Self::Output<'_>> {
         self.deluge.next().map(|item| async {
