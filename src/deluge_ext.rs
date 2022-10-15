@@ -34,9 +34,9 @@ pub trait DelugeExt: Deluge {
     }
 
     /// Leaves the elements for which `f` returns a promise evaluating to `true`.
-    /// 
+    ///
     /// # WARNING
-    /// 
+    ///
     /// Currently has [a breaking bug](https://github.com/mkawalec/deluge/issues/1).
     ///
     /// # Examples
@@ -63,7 +63,7 @@ pub trait DelugeExt: Deluge {
     }
 
     /// Leaves the elements for which `f` returns a promise evaluating to `true`.
-    /// 
+    ///
     /// # Examples
     ///
     /// ```
@@ -320,7 +320,8 @@ mod tests {
     #[tokio::test]
     async fn filter_map_works() {
         let result = iter([1, 2, 3, 4])
-            .filter_map(|x| async move { if x % 2 == 0 {
+            .filter_map(|x| async move {
+                if x % 2 == 0 {
                     Some("yes")
                 } else {
                     None
