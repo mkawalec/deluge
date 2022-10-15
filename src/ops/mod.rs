@@ -1,3 +1,4 @@
+pub mod any;
 pub mod collect;
 #[cfg(feature = "async-runtime")]
 pub mod collect_par;
@@ -11,6 +12,7 @@ pub mod take;
 #[cfg(feature = "async-runtime")]
 pub mod zip;
 
+pub(crate) use any::*;
 pub(crate) use collect::*;
 #[cfg(feature = "async-runtime")]
 pub(crate) use collect_par::*;
