@@ -25,9 +25,9 @@ pub(crate) use any::*;
 #[cfg(feature = "async-runtime")]
 pub(crate) use any_par::*;
 pub(crate) use collect::*;
-pub(crate) use count::*;
 #[cfg(feature = "async-runtime")]
 pub(crate) use collect_par::*;
+pub(crate) use count::*;
 pub(crate) use filter::*;
 pub(crate) use filter_map::*;
 pub(crate) use fold::*;

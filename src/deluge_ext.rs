@@ -154,21 +154,22 @@ pub trait DelugeExt: Deluge {
 
     /// Consumes all the items in a deluge and returns
     /// the number of elements that were observed.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use deluge::*;
-    /// 
+    ///
     /// # futures::executor::block_on(async {
     /// let result = deluge::iter([1, 2, 3, 4])
     ///     .count();
-    /// 
-    /// assert_eq!(result, 4); 
-    /// # }) 
+    ///
+    /// assert_eq!(result, 4);
+    /// # })
     /// ```
     fn count(self) -> usize
-    where Self: Sized
+    where
+        Self: Sized,
     {
         count(self)
     }
@@ -603,10 +604,9 @@ mod tests {
 
     #[tokio::test]
     async fn count_works() {
-        let result = iter([1, 2, 3, 4])
-            .count();
-        
-        assert_eq!(result, 4); 
+        let result = iter([1, 2, 3, 4]).count();
+
+        assert_eq!(result, 4);
     }
 
     #[tokio::test]
