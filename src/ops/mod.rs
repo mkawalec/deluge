@@ -7,6 +7,7 @@ pub mod any_par;
 pub mod collect;
 #[cfg(feature = "async-runtime")]
 pub mod collect_par;
+pub mod count;
 pub mod filter;
 pub mod filter_map;
 pub mod fold;
@@ -24,6 +25,7 @@ pub(crate) use any::*;
 #[cfg(feature = "async-runtime")]
 pub(crate) use any_par::*;
 pub(crate) use collect::*;
+pub(crate) use count::*;
 #[cfg(feature = "async-runtime")]
 pub(crate) use collect_par::*;
 pub(crate) use filter::*;
