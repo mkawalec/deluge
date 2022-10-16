@@ -145,7 +145,6 @@ fn create_worker<'a, Del: Deluge + 'a>(
 impl<'a, Del, C> Stream for CollectPar<'a, Del, C>
 where
     Del: Deluge + 'a,
-    C: Default + Extend<Del::Item>,
 {
     type Item = Del::Item;
 
