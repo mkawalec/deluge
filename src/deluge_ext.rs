@@ -366,6 +366,8 @@ mod tests {
     use crate::iter::iter;
     use more_asserts::{assert_gt, assert_lt};
     use std::time::{Duration, Instant};
+    use tokio::sync::Mutex;
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn map_can_be_created() {
@@ -378,6 +380,70 @@ mod tests {
         let result = iter([1, 2, 3, 4]).collect::<Vec<usize>>(None).await;
 
         assert_eq!(vec![1, 2, 3, 4], result);
+    }
+
+    #[tokio::test]
+    async fn any_works() {
+        let result = iter([1, 2, 3, 4])
+            .any(None, |x| async move { x == 4 })
+            .await;
+        
+        assert_eq!(result, true);
+    }
+
+    #[tokio::test]
+    async fn any_short_circuits() {
+        let evaluated = Arc::new(Mutex::new(Vec::new()));
+
+        let result = iter([1, 2, 3, 4, 5, 6, 7])
+            .any(1, |x| {
+                let evaluated = evaluated.clone();
+                async move {
+                {
+                    let mut evaluated = evaluated.lock().await;
+                    evaluated.push(x);
+                }
+                tokio::time::sleep(Duration::from_millis(100 - 10 * x)).await;
+                x == 2
+                }
+            })
+            .await;
+        
+        assert_eq!(result, true);
+        // We might evaluate a little bit more than we should have, but not much more
+        assert_lt!(Arc::try_unwrap(evaluated).unwrap().into_inner().len(), 4);
+    }
+
+    #[tokio::test]
+    async fn any_par_works() {
+        let result = iter([1, 2, 3, 4])
+            .any_par(None, None, |x| async move { x == 4 })
+            .await;
+        
+        assert_eq!(result, true);
+    }
+
+    #[tokio::test]
+    async fn any_par_short_circuits() {
+        let evaluated = Arc::new(Mutex::new(Vec::new()));
+
+        let result = iter([1, 2, 3, 4, 5, 6, 7])
+            .any_par(2, 1, |x| {
+                let evaluated = evaluated.clone();
+                async move {
+                {
+                    let mut evaluated = evaluated.lock().await;
+                    evaluated.push(x);
+                }
+                tokio::time::sleep(Duration::from_millis(100 - 10 * x)).await;
+                x == 2
+                }
+            })
+            .await;
+        
+        assert_eq!(result, true);
+        // We might evaluate a little bit more than we should have, but not much more
+        assert_lt!(Arc::try_unwrap(evaluated).unwrap().into_inner().len(), 5);
     }
 
     #[tokio::test]
