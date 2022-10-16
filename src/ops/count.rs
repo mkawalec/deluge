@@ -2,7 +2,7 @@ use crate::deluge::Deluge;
 
 pub fn count<Del: Deluge>(deluge: Del) -> usize {
     let mut count = 0;
-    while let Some(_) = deluge.next() {
+    while deluge.next().is_some() {
         count += 1;
     }
 
