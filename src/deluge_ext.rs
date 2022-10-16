@@ -23,13 +23,13 @@ pub trait DelugeExt: Deluge {
     ///     .any(None, |x| async move { x == 4 })
     ///     .await;
     ///
-    /// assert_eq!(result, true);
+    /// assert!(result);
     ///
     /// let result = deluge::iter([1, 2, 3, 4])
     ///     .any(None, |x| async move { x > 10 })
     ///     .await;
     ///
-    /// assert_eq!(result, false);
+    /// assert!(!result);
     /// # });
     /// ```
     fn any<'a, Fut, F>(self, concurrency: impl Into<Option<usize>>, f: F) -> Any<'a, Self, Fut, F>
@@ -57,13 +57,13 @@ pub trait DelugeExt: Deluge {
     ///     .any_par(None, None, |x| async move { x == 4 })
     ///     .await;
     ///
-    /// assert_eq!(result, true);
+    /// assert!(result);
     ///
     /// let result = deluge::iter([1, 2, 3, 4])
     ///     .any_par(None, None, |x| async move { x > 10 })
     ///     .await;
     ///
-    /// assert_eq!(result, false);
+    /// assert!(!result);
     /// # });
     /// ```
     fn any_par<'a, Fut, F>(
@@ -388,7 +388,7 @@ mod tests {
             .any(None, |x| async move { x == 4 })
             .await;
 
-        assert_eq!(result, true);
+        assert!(result);
     }
 
     #[tokio::test]
@@ -409,7 +409,7 @@ mod tests {
             })
             .await;
 
-        assert_eq!(result, true);
+        assert!(result);
         // We might evaluate a little bit more than we should have, but not much more
         assert_lt!(Arc::try_unwrap(evaluated).unwrap().into_inner().len(), 4);
     }
@@ -420,7 +420,7 @@ mod tests {
             .any_par(None, None, |x| async move { x == 4 })
             .await;
 
-        assert_eq!(result, true);
+        assert!(result);
     }
 
     #[tokio::test]
@@ -441,7 +441,7 @@ mod tests {
             })
             .await;
 
-        assert_eq!(result, true);
+        assert!(result);
         // We might evaluate a little bit more than we should have, but not much more
         assert_lt!(Arc::try_unwrap(evaluated).unwrap().into_inner().len(), 5);
     }
