@@ -8,9 +8,9 @@ impl<T> DelugeExt for T where T: Deluge {}
 
 /// Exposes easy to use Deluge operations. **This should be your first step**
 pub trait DelugeExt: Deluge {
-    /// Resolves to true if any of the calls to `F` return true 
+    /// Resolves to true if any of the calls to `F` return true
     /// for any element of the deluge.
-    /// Evaluates the elements concurrently and short circuits evaluation 
+    /// Evaluates the elements concurrently and short circuits evaluation
     /// on a successful result.
     ///
     /// # Examples
@@ -24,11 +24,11 @@ pub trait DelugeExt: Deluge {
     ///     .await;
     ///
     /// assert_eq!(result, true);
-    /// 
+    ///
     /// let result = deluge::iter([1, 2, 3, 4])
     ///     .any(None, |x| async move { x > 10 })
     ///     .await;
-    /// 
+    ///
     /// assert_eq!(result, false);
     /// # });
     /// ```
@@ -42,9 +42,9 @@ pub trait DelugeExt: Deluge {
     }
 
     /// A parallel version of `DelugeExt::any`.
-    /// Resolves to true if any of the calls to `F` return true 
+    /// Resolves to true if any of the calls to `F` return true
     /// for any element of the deluge.
-    /// Evaluates the elements in parallel and short circuits evaluation 
+    /// Evaluates the elements in parallel and short circuits evaluation
     /// on a successful result.
     ///
     /// # Examples
@@ -58,11 +58,11 @@ pub trait DelugeExt: Deluge {
     ///     .await;
     ///
     /// assert_eq!(result, true);
-    /// 
+    ///
     /// let result = deluge::iter([1, 2, 3, 4])
     ///     .any_par(None, None, |x| async move { x > 10 })
     ///     .await;
-    /// 
+    ///
     /// assert_eq!(result, false);
     /// # });
     /// ```
@@ -70,7 +70,7 @@ pub trait DelugeExt: Deluge {
         self,
         worker_count: impl Into<Option<usize>>,
         worker_concurrency: impl Into<Option<usize>>,
-        f: F
+        f: F,
     ) -> AnyPar<'a, Self, Fut, F>
     where
         F: Fn(Self::Item) -> Fut + Send + 'a,
@@ -365,9 +365,9 @@ mod tests {
     use crate::into_deluge::IntoDeluge;
     use crate::iter::iter;
     use more_asserts::{assert_gt, assert_lt};
+    use std::sync::Arc;
     use std::time::{Duration, Instant};
     use tokio::sync::Mutex;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn map_can_be_created() {
@@ -387,7 +387,7 @@ mod tests {
         let result = iter([1, 2, 3, 4])
             .any(None, |x| async move { x == 4 })
             .await;
-        
+
         assert_eq!(result, true);
     }
 
@@ -399,16 +399,16 @@ mod tests {
             .any(1, |x| {
                 let evaluated = evaluated.clone();
                 async move {
-                {
-                    let mut evaluated = evaluated.lock().await;
-                    evaluated.push(x);
-                }
-                tokio::time::sleep(Duration::from_millis(100 - 10 * x)).await;
-                x == 2
+                    {
+                        let mut evaluated = evaluated.lock().await;
+                        evaluated.push(x);
+                    }
+                    tokio::time::sleep(Duration::from_millis(100 - 10 * x)).await;
+                    x == 2
                 }
             })
             .await;
-        
+
         assert_eq!(result, true);
         // We might evaluate a little bit more than we should have, but not much more
         assert_lt!(Arc::try_unwrap(evaluated).unwrap().into_inner().len(), 4);
@@ -419,7 +419,7 @@ mod tests {
         let result = iter([1, 2, 3, 4])
             .any_par(None, None, |x| async move { x == 4 })
             .await;
-        
+
         assert_eq!(result, true);
     }
 
@@ -431,16 +431,16 @@ mod tests {
             .any_par(2, 1, |x| {
                 let evaluated = evaluated.clone();
                 async move {
-                {
-                    let mut evaluated = evaluated.lock().await;
-                    evaluated.push(x);
-                }
-                tokio::time::sleep(Duration::from_millis(100 - 10 * x)).await;
-                x == 2
+                    {
+                        let mut evaluated = evaluated.lock().await;
+                        evaluated.push(x);
+                    }
+                    tokio::time::sleep(Duration::from_millis(100 - 10 * x)).await;
+                    x == 2
                 }
             })
             .await;
-        
+
         assert_eq!(result, true);
         // We might evaluate a little bit more than we should have, but not much more
         assert_lt!(Arc::try_unwrap(evaluated).unwrap().into_inner().len(), 5);

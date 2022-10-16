@@ -1,17 +1,17 @@
 use pin_project::pin_project;
 
-use crate::deluge::Deluge;
-use super::map::Map;
 use super::collect_par::CollectPar;
-use std::future::Future;
+use super::map::Map;
+use crate::deluge::Deluge;
 use futures::task::{Context, Poll};
 use futures::Stream;
+use std::future::Future;
 use std::pin::Pin;
 
 #[pin_project]
 pub struct AnyPar<'a, Del, Fut, F>
 where
-    Del: Deluge +'a,
+    Del: Deluge + 'a,
     F: Fn(Del::Item) -> Fut + Send + 'a,
     Fut: Future<Output = bool> + Send,
 {
@@ -19,7 +19,7 @@ where
     stream: CollectPar<'a, Map<Del, F>, ()>,
 }
 
-impl<'a, Del, Fut, F> AnyPar<'a, Del, Fut, F> 
+impl<'a, Del, Fut, F> AnyPar<'a, Del, Fut, F>
 where
     Del: Deluge + 'a,
     F: Fn(Del::Item) -> Fut + Send + 'a,
@@ -29,9 +29,8 @@ where
         deluge: Del,
         worker_count: impl Into<Option<usize>>,
         worker_concurrency: impl Into<Option<usize>>,
-        f: F
-    ) -> Self
-    {
+        f: F,
+    ) -> Self {
         Self {
             stream: CollectPar::new(Map::new(deluge, f), worker_count, worker_concurrency),
         }
@@ -53,7 +52,7 @@ where
             Poll::Ready(Some(false)) => {
                 cx.waker().wake_by_ref();
                 Poll::Pending
-            },
+            }
             Poll::Ready(None) => Poll::Ready(false),
             Poll::Pending => Poll::Pending,
         }
