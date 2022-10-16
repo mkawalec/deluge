@@ -41,6 +41,45 @@ pub trait DelugeExt: Deluge {
         Any::new(self, concurrency, f)
     }
 
+    /// A parallel version of `DelugeExt::any`.
+    /// Resolves to true if any of the calls to `F` return true 
+    /// for any element of the deluge.
+    /// Evaluates the elements in parallel and short circuits evaluation 
+    /// on a successful result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use deluge::*;
+    ///
+    /// # futures::executor::block_on(async {
+    /// let result = deluge::iter([1, 2, 3, 4])
+    ///     .any_par(None, None, |x| async move { x == 4 })
+    ///     .await;
+    ///
+    /// assert_eq!(result, true);
+    /// 
+    /// let result = deluge::iter([1, 2, 3, 4])
+    ///     .any_par(None, None, |x| async move { x > 10 })
+    ///     .await;
+    /// 
+    /// assert_eq!(result, false);
+    /// # });
+    /// ```
+    fn any_par<'a, Fut, F>(
+        self,
+        worker_count: impl Into<Option<usize>>,
+        worker_concurrency: impl Into<Option<usize>>,
+        f: F
+    ) -> AnyPar<'a, Self, Fut, F>
+    where
+        F: Fn(Self::Item) -> Fut + Send + 'a,
+        Fut: Future<Output = bool> + Send,
+        Self: Sized,
+    {
+        AnyPar::new(self, worker_count, worker_concurrency, f)
+    }
+
     /// Transforms each element by applying an asynchronous function `f` to it
     ///
     /// # Examples
