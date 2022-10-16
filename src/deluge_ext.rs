@@ -153,9 +153,9 @@ pub trait DelugeExt: Deluge {
     }
 
     /// Chains two deluges together
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use deluge::*;
     ///
@@ -171,7 +171,7 @@ pub trait DelugeExt: Deluge {
     /// ```
     fn chain<'a, Del2>(self, deluge2: Del2) -> Chain<'a, Self, Del2>
     where
-        Del2: for <'x> Deluge<Item = Self::Item, Output<'x> = Self::Output<'x>> + 'static,
+        Del2: for<'x> Deluge<Item = Self::Item, Output<'x> = Self::Output<'x>> + 'static,
         Self: Sized,
     {
         Chain::new(self, deluge2)
@@ -633,7 +633,7 @@ mod tests {
             .chain(iter([5, 6, 7, 8]))
             .collect::<Vec<usize>>(None)
             .await;
-        
+
         assert_eq!(result.len(), 8);
         assert_eq!(result, vec![1, 2, 3, 4, 5, 6, 7, 8]);
     }

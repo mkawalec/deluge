@@ -29,7 +29,7 @@ where
 impl<'a, Del1, Del2> Deluge for Chain<'a, Del1, Del2>
 where
     Del1: Deluge + 'static,
-    Del2: for <'x> Deluge<Item = Del1::Item, Output<'x> = Del1::Output<'x>> + 'static,
+    Del2: for<'x> Deluge<Item = Del1::Item, Output<'x> = Del1::Output<'x>> + 'static,
 {
     type Item = Del1::Item;
     type Output<'x> = impl Future<Output = Option<Self::Item>> + 'x where Self: 'x;
@@ -44,7 +44,7 @@ where
                 None => {
                     *first_exhausted = true;
                     self.deluge2.next()
-                },
+                }
                 otherwise => otherwise,
             }
         };
@@ -52,4 +52,3 @@ where
         result.map(|v| async move { v.await })
     }
 }
-
