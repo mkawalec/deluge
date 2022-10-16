@@ -1,22 +1,56 @@
+use pin_project::pin_project;
+
 use crate::deluge::Deluge;
 use super::map::Map;
+use super::collect::Collect;
 use std::future::Future;
+use futures::task::{Context, Poll};
+use futures::Stream;
+use std::pin::Pin;
 
-pub struct Any<Del, F> {
-    deluge: Map<Del, F>,
-}
-
-impl<Del, Fut, F> Any<Del, F> 
+#[pin_project]
+pub struct Any<'a, Del, Fut, F>
 where
-    Del: Deluge,
-    F: Fn(Del::Item) -> Fut + Send,
+    Del: Deluge +'a,
+    F: Fn(Del::Item) -> Fut + Send + 'a,
     Fut: Future<Output = bool> + Send,
 {
-    pub(crate) fn new(deluge: Del, f: F) -> Self {
+    #[pin]
+    stream: Collect<'a, Map<Del, F>, ()>,
+}
+
+impl<'a, Del, Fut, F> Any<'a, Del, Fut, F> 
+where
+    Del: Deluge + 'a,
+    F: Fn(Del::Item) -> Fut + Send + 'a,
+    Fut: Future<Output = bool> + Send,
+{
+    pub(crate) fn new(deluge: Del, concurrency: impl Into<Option<usize>>, f: F) -> Self {
         Self {
-            deluge: Map::new(deluge, f)
+            stream: Collect::new(Map::new(deluge, f), concurrency),
         }
     }
 }
 
+impl<'a, Del, Fut, F> Future for Any<'a, Del, Fut, F>
+where
+    Del: Deluge + 'a,
+    F: Fn(Del::Item) -> Fut + Send + 'a,
+    Fut: Future<Output = bool> + Send,
+{
+    type Output = bool;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.as_mut().project();
+        match this.stream.poll_next(cx) {
+            Poll::Ready(Some(true)) => Poll::Ready(true),
+            Poll::Ready(Some(false)) => {
+                cx.waker().wake_by_ref();
+                Poll::Pending
+            },
+            Poll::Ready(None) => Poll::Ready(false),
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
 // Return a future, which returns if any element evaluates to true

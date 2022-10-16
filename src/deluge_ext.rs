@@ -8,6 +8,39 @@ impl<T> DelugeExt for T where T: Deluge {}
 
 /// Exposes easy to use Deluge operations. **This should be your first step**
 pub trait DelugeExt: Deluge {
+    /// Resolves to true if any of the calls to `F` return true 
+    /// for any element of the deluge.
+    /// Evaluates the elements concurrently and short circuits evaluation 
+    /// on a successful result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use deluge::*;
+    ///
+    /// # futures::executor::block_on(async {
+    /// let result = deluge::iter([1, 2, 3, 4])
+    ///     .any(None, |x| async move { x == 4 })
+    ///     .await;
+    ///
+    /// assert_eq!(result, true);
+    /// 
+    /// let result = deluge::iter([1, 2, 3, 4])
+    ///     .any(None, |x| async move { x > 10 })
+    ///     .await;
+    /// 
+    /// assert_eq!(result, false);
+    /// # });
+    /// ```
+    fn any<'a, Fut, F>(self, concurrency: impl Into<Option<usize>>, f: F) -> Any<'a, Self, Fut, F>
+    where
+        F: Fn(Self::Item) -> Fut + Send + 'a,
+        Fut: Future<Output = bool> + Send,
+        Self: Sized,
+    {
+        Any::new(self, concurrency, f)
+    }
+
     /// Transforms each element by applying an asynchronous function `f` to it
     ///
     /// # Examples
