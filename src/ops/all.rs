@@ -9,7 +9,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 #[pin_project]
-pub struct Any<'a, Del, Fut, F>
+pub struct All<'a, Del, Fut, F>
 where
     Del: Deluge + 'a,
     F: Fn(Del::Item) -> Fut + Send + 'a,
@@ -19,7 +19,7 @@ where
     stream: Collect<'a, Map<Del, F>, ()>,
 }
 
-impl<'a, Del, Fut, F> Any<'a, Del, Fut, F>
+impl<'a, Del, Fut, F> All<'a, Del, Fut, F>
 where
     Del: Deluge + 'a,
     F: Fn(Del::Item) -> Fut + Send + 'a,
@@ -32,7 +32,7 @@ where
     }
 }
 
-impl<'a, Del, Fut, F> Future for Any<'a, Del, Fut, F>
+impl<'a, Del, Fut, F> Future for All<'a, Del, Fut, F>
 where
     Del: Deluge + 'a,
     F: Fn(Del::Item) -> Fut + Send + 'a,
@@ -43,12 +43,14 @@ where
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project();
         match this.stream.poll_next(cx) {
-            Poll::Ready(Some(true)) => Poll::Ready(true),
-            Poll::Ready(Some(false)) => {
+            Poll::Ready(Some(true)) => {
                 cx.waker().wake_by_ref();
                 Poll::Pending
+            },
+            Poll::Ready(Some(false)) => {
+                Poll::Ready(false)
             }
-            Poll::Ready(None) => Poll::Ready(false),
+            Poll::Ready(None) => Poll::Ready(true),
             Poll::Pending => Poll::Pending,
         }
     }

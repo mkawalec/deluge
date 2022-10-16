@@ -58,4 +58,3 @@ where
         }
     }
 }
-// Return a future, which returns if any element evaluates to true

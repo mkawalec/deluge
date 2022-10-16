@@ -8,6 +8,78 @@ impl<T> DelugeExt for T where T: Deluge {}
 
 /// Exposes easy to use Deluge operations. **This should be your first step**
 pub trait DelugeExt: Deluge {
+    /// Resolves to true if all of the calls to `F` return true
+    /// for each element of the deluge.
+    /// Evaluates the elements concurrently and short circuits evaluation
+    /// on a first failure.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use deluge::*;
+    ///
+    /// # futures::executor::block_on(async {
+    /// let result = deluge::iter([1, 2, 3, 4])
+    ///     .all(None, |x| async move { x < 5 })
+    ///     .await;
+    ///
+    /// assert!(result);
+    ///
+    /// let result = deluge::iter([1, 2, 3, 4])
+    ///     .all(None, |x| async move { x < 3 })
+    ///     .await;
+    ///
+    /// assert!(!result);
+    /// # });
+    /// ```
+    fn all<'a, Fut, F>(self, concurrency: impl Into<Option<usize>>, f: F) -> All<'a, Self, Fut, F>
+    where
+        F: Fn(Self::Item) -> Fut + Send + 'a,
+        Fut: Future<Output = bool> + Send,
+        Self: Sized,
+    {
+        All::new(self, concurrency, f)
+    }
+
+    /// A parallel version of `DelugeExt::all`.
+    /// Resolves to true if all of the calls to `F` return true
+    /// for each element of the deluge.
+    /// Evaluates the elements in parallel and short circuits evaluation
+    /// on a first failure.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use deluge::*;
+    ///
+    /// # futures::executor::block_on(async {
+    /// let result = deluge::iter([1, 2, 3, 4])
+    ///     .all_par(None, None, |x| async move { x < 5 })
+    ///     .await;
+    ///
+    /// assert!(result);
+    ///
+    /// let result = deluge::iter([1, 2, 3, 4])
+    ///     .all_par(None, None, |x| async move { x < 3 })
+    ///     .await;
+    ///
+    /// assert!(!result);
+    /// # });
+    /// ```
+    fn all_par<'a, Fut, F>(
+        self,
+        worker_count: impl Into<Option<usize>>,
+        worker_concurrency: impl Into<Option<usize>>,
+        f: F,
+    ) -> AllPar<'a, Self, Fut, F>
+    where
+        F: Fn(Self::Item) -> Fut + Send + 'a,
+        Fut: Future<Output = bool> + Send,
+        Self: Sized,
+    {
+        AllPar::new(self, worker_count, worker_concurrency, f)
+    }
+
     /// Resolves to true if any of the calls to `F` return true
     /// for any element of the deluge.
     /// Evaluates the elements concurrently and short circuits evaluation
@@ -444,6 +516,70 @@ mod tests {
         assert!(result);
         // We might evaluate a little bit more than we should have, but not much more
         assert_lt!(Arc::try_unwrap(evaluated).unwrap().into_inner().len(), 5);
+    }
+
+    #[tokio::test]
+    async fn all_works() {
+        let result = iter([1, 2, 3, 4])
+            .all(None, |x| async move { x < 5 })
+            .await;
+
+        assert!(result);
+    }
+
+    #[tokio::test]
+    async fn all_short_circuits() {
+        let evaluated = Arc::new(Mutex::new(Vec::new()));
+
+        let result = iter([1, 2, 3, 4, 5, 6, 7])
+            .all(1, |x| {
+                let evaluated = evaluated.clone();
+                async move {
+                    {
+                        let mut evaluated = evaluated.lock().await;
+                        evaluated.push(x);
+                    }
+                    tokio::time::sleep(Duration::from_millis(100 - 10 * x)).await;
+                    x < 3
+                }
+            })
+            .await;
+
+        assert!(!result);
+        // We might evaluate a little bit more than we should have, but not much more
+        assert_lt!(Arc::try_unwrap(evaluated).unwrap().into_inner().len(), 5);
+    }
+
+    #[tokio::test]
+    async fn all_par_works() {
+        let result = iter([1, 2, 3, 4])
+            .all_par(None, None, |x| async move { x < 5 })
+            .await;
+
+        assert!(result);
+    }
+
+    #[tokio::test]
+    async fn all_par_short_circuits() {
+        let evaluated = Arc::new(Mutex::new(Vec::new()));
+
+        let result = iter([1, 2, 3, 4, 5, 6, 7])
+            .all_par(2, 1, |x| {
+                let evaluated = evaluated.clone();
+                async move {
+                    {
+                        let mut evaluated = evaluated.lock().await;
+                        evaluated.push(x);
+                    }
+                    tokio::time::sleep(Duration::from_millis(100 - 10 * x)).await;
+                    x < 3
+                }
+            })
+            .await;
+
+        assert!(!result);
+        // We might evaluate a little bit more than we should have, but not much more
+        assert_lt!(Arc::try_unwrap(evaluated).unwrap().into_inner().len(), 7);
     }
 
     #[tokio::test]
