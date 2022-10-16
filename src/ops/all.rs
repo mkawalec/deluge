@@ -46,10 +46,8 @@ where
             Poll::Ready(Some(true)) => {
                 cx.waker().wake_by_ref();
                 Poll::Pending
-            },
-            Poll::Ready(Some(false)) => {
-                Poll::Ready(false)
             }
+            Poll::Ready(Some(false)) => Poll::Ready(false),
             Poll::Ready(None) => Poll::Ready(true),
             Poll::Pending => Poll::Pending,
         }

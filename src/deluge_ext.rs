@@ -520,9 +520,7 @@ mod tests {
 
     #[tokio::test]
     async fn all_works() {
-        let result = iter([1, 2, 3, 4])
-            .all(None, |x| async move { x < 5 })
-            .await;
+        let result = iter([1, 2, 3, 4]).all(None, |x| async move { x < 5 }).await;
 
         assert!(result);
     }
