@@ -2,6 +2,7 @@ pub mod all;
 #[cfg(feature = "async-runtime")]
 pub mod all_par;
 pub mod any;
+pub mod chain;
 #[cfg(feature = "async-runtime")]
 pub mod any_par;
 pub mod collect;
@@ -25,6 +26,7 @@ pub(crate) use any::*;
 #[cfg(feature = "async-runtime")]
 pub(crate) use any_par::*;
 pub(crate) use collect::*;
+pub(crate) use chain::*;
 #[cfg(feature = "async-runtime")]
 pub(crate) use collect_par::*;
 pub(crate) use count::*;

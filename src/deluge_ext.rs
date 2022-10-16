@@ -152,6 +152,31 @@ pub trait DelugeExt: Deluge {
         AnyPar::new(self, worker_count, worker_concurrency, f)
     }
 
+    /// Chains two deluges together
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use deluge::*;
+    ///
+    /// # futures::executor::block_on(async {
+    /// let result = deluge::iter([1, 2, 3, 4])
+    ///     .chain(deluge::iter([5, 6, 7, 8]))
+    ///     .collect::<Vec<usize>>(None)
+    ///     .await;
+    ///
+    /// assert_eq!(result.len(), 8);
+    /// assert_eq!(result, vec![1, 2, 3, 4, 5, 6, 7, 8]);
+    /// # })
+    /// ```
+    fn chain<'a, Del2>(self, deluge2: Del2) -> Chain<'a, Self, Del2>
+    where
+        Del2: for <'x> Deluge<Item = Self::Item, Output<'x> = Self::Output<'x>> + 'static,
+        Self: Sized,
+    {
+        Chain::new(self, deluge2)
+    }
+
     /// Consumes all the items in a deluge and returns
     /// the number of elements that were observed.
     ///
@@ -600,6 +625,17 @@ mod tests {
         assert!(!result);
         // We might evaluate a little bit more than we should have, but not much more
         assert_lt!(Arc::try_unwrap(evaluated).unwrap().into_inner().len(), 7);
+    }
+
+    #[tokio::test]
+    async fn chain_works() {
+        let result = iter([1, 2, 3, 4])
+            .chain(iter([5, 6, 7, 8]))
+            .collect::<Vec<usize>>(None)
+            .await;
+        
+        assert_eq!(result.len(), 8);
+        assert_eq!(result, vec![1, 2, 3, 4, 5, 6, 7, 8]);
     }
 
     #[tokio::test]
