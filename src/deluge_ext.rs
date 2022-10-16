@@ -152,6 +152,28 @@ pub trait DelugeExt: Deluge {
         AnyPar::new(self, worker_count, worker_concurrency, f)
     }
 
+    /// Consumes all the items in a deluge and returns
+    /// the number of elements that were observed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use deluge::*;
+    ///
+    /// # futures::executor::block_on(async {
+    /// let result = deluge::iter([1, 2, 3, 4])
+    ///     .count();
+    ///
+    /// assert_eq!(result, 4);
+    /// # })
+    /// ```
+    fn count(self) -> usize
+    where
+        Self: Sized,
+    {
+        count(self)
+    }
+
     /// Transforms each element by applying an asynchronous function `f` to it
     ///
     /// # Examples
@@ -578,6 +600,13 @@ mod tests {
         assert!(!result);
         // We might evaluate a little bit more than we should have, but not much more
         assert_lt!(Arc::try_unwrap(evaluated).unwrap().into_inner().len(), 7);
+    }
+
+    #[tokio::test]
+    async fn count_works() {
+        let result = iter([1, 2, 3, 4]).count();
+
+        assert_eq!(result, 4);
     }
 
     #[tokio::test]
