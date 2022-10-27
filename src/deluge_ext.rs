@@ -245,13 +245,14 @@ pub trait DelugeExt: Deluge {
     // # });
     //
     // ```
-    fn filter<'a, F>(self, f: F) -> Filter<'a, Self, F>
+    // 27.10.2022: Commented out filter until the issue#1 is solved
+    /*fn filter<'a, F>(self, f: F) -> Filter<'a, Self, F>
     where
         for<'b> F: XFn<'b, Self::Item, bool> + Send + 'b,
         Self: Sized,
     {
         Filter::new(self, f)
-    }
+    }*/
 
     /// Filters out elements for which a function returns `None`,
     /// substitutes the elements for the ones there it returns `Some(new_value)`.
