@@ -9,8 +9,10 @@
 
 </div>
 
-Deluge implements parallel and concurrent stream operations while driving the underlying futures concurrently.
-This is in contrast to standard streams which evaluate each future sequentially, leading to large delays on highly concurrent operations.
+`Deluge` builds on top of `Stream` to provide stream operations that are parallel or concurrent by default.
+It allows it's user to have an ordered stream of futures that are evaluated concurrently, with all the complexity hidden inside `Deluge` itself.
+We achieve this by working one level higher than a stream.
+Instead of returning values that might materialize at some point in the future, we immediately return an iterator of unevaluated futures which can then be evaluated by the collector.
 
 The animation below shows an example of mapping over a highly concurrent six element collection. &#x1F4D8; indicates the time it takes for an underlying element to become available, while &#x1F4D7; the time it takes to apply a mapped operation.
 
@@ -40,7 +42,7 @@ assert_eq!(vec![2, 4, 6, 8], result);
 ```
 
 The parallel collector spawns a number of workers.
-If a number of workers is not specified, it will default to the number of cpus, if the concurrency limit is not specified each worker will default to `total_futures_to_evaluate / number_of_workers`.
+If a number of workers is not specified, it will default to the number of logical cpus, if the concurrency limit is not specified each worker will default to `total_futures_to_evaluate / number_of_workers`.
 Note that you need to enable either a `tokio` or `async-std` feature to support parallel collectors.
 
 ```rust
