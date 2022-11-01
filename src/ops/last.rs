@@ -1,15 +1,12 @@
 use crate::deluge::Deluge;
 
-pub struct Last<Del>
-{
+pub struct Last<Del> {
     deluge: Del,
 }
 
 impl<Del> Last<Del> {
     pub(crate) fn new(deluge: Del) -> Self {
-        Self { 
-            deluge,
-        }
+        Self { deluge }
     }
 }
 

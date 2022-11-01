@@ -8,7 +8,7 @@ pub struct First<Del> {
 
 impl<Del> First<Del> {
     pub(crate) fn new(deluge: Del) -> Self {
-        Self { 
+        Self {
             deluge,
             item_provided: Mutex::new(false),
         }

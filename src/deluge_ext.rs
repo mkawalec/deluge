@@ -287,7 +287,7 @@ pub trait DelugeExt: Deluge {
     }
 
     /// Returns the first element of the input deluge and then finishes
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use deluge::*;
@@ -391,7 +391,7 @@ pub trait DelugeExt: Deluge {
     }
 
     /// Returns the last element of the input deluge and then finishes
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use deluge::*;
@@ -412,7 +412,6 @@ pub trait DelugeExt: Deluge {
     {
         Last::new(self)
     }
-
 
     /// Consumes at most `how_many` elements from the Deluge, ignoring the rest.
     ///
