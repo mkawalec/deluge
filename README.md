@@ -60,6 +60,12 @@ assert_eq!(result.len(), 150);
 
 Please take a look at [the tests](https://github.com/mkawalec/deluge/blob/main/src/deluge_ext.rs) for more examples of using the library.
 
+### Converting to a Stream
+
+Both `collect` and `collect_par` implement a `Stream`.
+If you want to use any of the existing `Stream` extensions or functions that are missing from `Deluge`, `collect` and then use it as any other stream.
+Everything that is before collection in `Deluge` gets the benefits of running the futures in parallel.
+
 ### Questions
 
 #### I would want to add another operation to DelugeExt. Should I?
