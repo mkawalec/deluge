@@ -1,7 +1,9 @@
 use crate::iter::{iter, Iter};
 use crate::Deluge;
 
-/// Allows converting any type that implements `IntoIterator` into a `Deluge`
+/// Allows converting any type that implements `IntoDeluge` into a `Deluge`.
+/// Specifically anything that implements `IntoIterator` or is a `Deluge` itself
+/// can be converted into `Deluge`.
 pub trait IntoDeluge<T>
 where
     T: Deluge
