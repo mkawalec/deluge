@@ -286,6 +286,29 @@ pub trait DelugeExt: Deluge {
         FilterMap::new(self, f)
     }
 
+    /// Returns the first element of the input deluge and then finishes
+    /// 
+    /// # Examples
+    /// ```
+    /// use deluge::*;
+    ///
+    /// # futures::executor::block_on(async {
+    /// let result = (0..10).into_deluge()
+    ///     .first()
+    ///     .collect::<Vec<usize>>(None)
+    ///     .await;
+    ///
+    /// assert_eq!(vec![0], result);
+    /// # });
+    ///
+    /// ```
+    fn first(self) -> First<Self>
+    where
+        Self: Sized,
+    {
+        First::new(self)
+    }
+
     /// Concurrently accummulates values in the accummulator. The degree of concurrency
     /// can either be unlimited (the default) or limited depending on the requirements.
     ///
@@ -366,6 +389,30 @@ pub trait DelugeExt: Deluge {
     {
         FoldPar::new(self, worker_count, worker_concurrency, acc, f)
     }
+
+    /// Returns the last element of the input deluge and then finishes
+    /// 
+    /// # Examples
+    /// ```
+    /// use deluge::*;
+    ///
+    /// # futures::executor::block_on(async {
+    /// let result = (0..10).into_deluge()
+    ///     .last()
+    ///     .collect::<Vec<usize>>(None)
+    ///     .await;
+    ///
+    /// assert_eq!(vec![9], result);
+    /// # });
+    ///
+    /// ```
+    fn last(self) -> Last<Self>
+    where
+        Self: Sized,
+    {
+        Last::new(self)
+    }
+
 
     /// Consumes at most `how_many` elements from the Deluge, ignoring the rest.
     ///
@@ -736,6 +783,28 @@ mod tests {
             .await;
 
         assert_eq!(result, 45);
+    }
+
+    #[tokio::test]
+    async fn first_works() {
+        let result = (0..100)
+            .into_deluge()
+            .first()
+            .collect::<Vec<usize>>(None)
+            .await;
+
+        assert_eq!(result, vec![0]);
+    }
+
+    #[tokio::test]
+    async fn last_works() {
+        let result = (0..100)
+            .into_deluge()
+            .last()
+            .collect::<Vec<usize>>(None)
+            .await;
+
+        assert_eq!(result, vec![99]);
     }
 
     #[cfg(feature = "tokio")]
