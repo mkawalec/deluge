@@ -9,7 +9,7 @@ pub struct Iter<I> {
 impl<I> Unpin for Iter<I> {}
 
 /// Converts any iterator into a `Deluge`
-pub fn iter<I>(i: I) -> Iter<I::IntoIter>
+pub(crate) fn iter<I>(i: I) -> Iter<I::IntoIter>
 where
     I: IntoIterator,
 {

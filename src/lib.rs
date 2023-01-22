@@ -46,10 +46,11 @@
 //! use deluge::*;
 //!
 //! # futures::executor::block_on(async {
-//! let result = deluge::iter([1, 2, 3, 4])
-//!    .map(|x| async move { x * 2 })
-//!    .collect::<Vec<usize>>(None)
-//!    .await;
+//! let result = [1, 2, 3, 4]
+//!     .into_deluge()
+//!     .map(|x| async move { x * 2 })
+//!     .collect::<Vec<usize>>(None)
+//!     .await;
 //!
 //! assert_eq!(vec![2, 4, 6, 8], result);
 //! # });

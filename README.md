@@ -33,7 +33,8 @@ The concurrent collector accepts an optional concurrency limit.
 If it is specified, at most the number of futures equal to that limit will be evaluated at once.
 
 ```rust
-let result = deluge::iter([1, 2, 3, 4])
+let result = [1, 2, 3, 4]
+    .into_deluge()
     .map(|x| async move { x * 2 })
     .collect::<Vec<usize>>(None)
     .await;

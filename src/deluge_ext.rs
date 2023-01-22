@@ -19,13 +19,15 @@ pub trait DelugeExt: Deluge {
     /// use deluge::*;
     ///
     /// # futures::executor::block_on(async {
-    /// let result = deluge::iter([1, 2, 3, 4])
+    /// let result = [1, 2, 3, 4]
+    ///     .into_deluge()
     ///     .all(None, |x| async move { x < 5 })
     ///     .await;
     ///
     /// assert!(result);
     ///
-    /// let result = deluge::iter([1, 2, 3, 4])
+    /// let result = [1, 2, 3, 4]
+    ///     .into_deluge()
     ///     .all(None, |x| async move { x < 3 })
     ///     .await;
     ///
@@ -53,13 +55,15 @@ pub trait DelugeExt: Deluge {
     /// use deluge::*;
     ///
     /// # futures::executor::block_on(async {
-    /// let result = deluge::iter([1, 2, 3, 4])
+    /// let result = [1, 2, 3, 4]
+    ///     .into_deluge()
     ///     .all_par(None, None, |x| async move { x < 5 })
     ///     .await;
     ///
     /// assert!(result);
     ///
-    /// let result = deluge::iter([1, 2, 3, 4])
+    /// let result = [1, 2, 3, 4]
+    ///     .into_deluge()
     ///     .all_par(None, None, |x| async move { x < 3 })
     ///     .await;
     ///
@@ -91,13 +95,15 @@ pub trait DelugeExt: Deluge {
     /// use deluge::*;
     ///
     /// # futures::executor::block_on(async {
-    /// let result = deluge::iter([1, 2, 3, 4])
+    /// let result = [1, 2, 3, 4]
+    ///     .into_deluge()
     ///     .any(None, |x| async move { x == 4 })
     ///     .await;
     ///
     /// assert!(result);
     ///
-    /// let result = deluge::iter([1, 2, 3, 4])
+    /// let result = [1, 2, 3, 4]
+    ///     .into_deluge()
     ///     .any(None, |x| async move { x > 10 })
     ///     .await;
     ///
@@ -125,13 +131,15 @@ pub trait DelugeExt: Deluge {
     /// use deluge::*;
     ///
     /// # futures::executor::block_on(async {
-    /// let result = deluge::iter([1, 2, 3, 4])
+    /// let result = [1, 2, 3, 4]
+    ///     .into_deluge()
     ///     .any_par(None, None, |x| async move { x == 4 })
     ///     .await;
     ///
     /// assert!(result);
     ///
-    /// let result = deluge::iter([1, 2, 3, 4])
+    /// let result = [1, 2, 3, 4]
+    ///     .into_deluge()
     ///     .any_par(None, None, |x| async move { x > 10 })
     ///     .await;
     ///
@@ -160,8 +168,9 @@ pub trait DelugeExt: Deluge {
     /// use deluge::*;
     ///
     /// # futures::executor::block_on(async {
-    /// let result = deluge::iter([1, 2, 3, 4])
-    ///     .chain(deluge::iter([5, 6, 7, 8]))
+    /// let result = [1, 2, 3, 4]
+    ///     .into_deluge()
+    ///     .chain([5, 6, 7, 8].into_deluge())
     ///     .collect::<Vec<usize>>(None)
     ///     .await;
     ///
@@ -186,7 +195,8 @@ pub trait DelugeExt: Deluge {
     /// use deluge::*;
     ///
     /// # futures::executor::block_on(async {
-    /// let result = deluge::iter([1, 2, 3, 4])
+    /// let result = [1, 2, 3, 4]
+    ///     .into_deluge()
     ///     .count();
     ///
     /// assert_eq!(result, 4);
@@ -207,7 +217,8 @@ pub trait DelugeExt: Deluge {
     /// use deluge::*;
     ///
     /// # futures::executor::block_on(async {
-    /// let result = deluge::iter([1, 2, 3, 4])
+    /// let result = [1, 2, 3, 4]
+    ///     .into_deluge()
     ///     .map(|x| async move { x * 2 })
     ///     .collect::<Vec<usize>>(None)
     ///     .await;
@@ -445,7 +456,8 @@ pub trait DelugeExt: Deluge {
     /// use deluge::*;
     ///
     /// # futures::executor::block_on(async {
-    /// let result = iter((0..100).rev())
+    /// let result = (0..100).rev()
+    ///     .into_deluge()
     ///     .zip((0..90).into_deluge(), None)
     ///     .collect::<Vec<(u64, u64)>>(None)
     ///     .await;
@@ -537,20 +549,21 @@ mod tests {
 
     #[tokio::test]
     async fn map_can_be_created() {
-        iter([1, 2, 3, 4]).map(|x| async move { x * 2 });
+        [1, 2, 3, 4].into_deluge().map(|x| async move { x * 2 });
         assert_eq!(2, 2);
     }
 
     #[tokio::test]
     async fn we_can_collect() {
-        let result = iter([1, 2, 3, 4]).collect::<Vec<usize>>(None).await;
+        let result = [1, 2, 3, 4].into_deluge().collect::<Vec<usize>>(None).await;
 
         assert_eq!(vec![1, 2, 3, 4], result);
     }
 
     #[tokio::test]
     async fn any_works() {
-        let result = iter([1, 2, 3, 4])
+        let result = [1, 2, 3, 4]
+            .into_deluge()
             .any(None, |x| async move { x == 4 })
             .await;
 
@@ -561,7 +574,8 @@ mod tests {
     async fn any_short_circuits() {
         let evaluated = Arc::new(Mutex::new(Vec::new()));
 
-        let result = iter([1, 2, 3, 4, 5, 6, 7])
+        let result = [1, 2, 3, 4, 5, 6, 7]
+            .into_deluge()
             .any(1, |x| {
                 let evaluated = evaluated.clone();
                 async move {
@@ -582,7 +596,8 @@ mod tests {
 
     #[tokio::test]
     async fn any_par_works() {
-        let result = iter([1, 2, 3, 4])
+        let result = [1, 2, 3, 4]
+            .into_deluge()
             .any_par(None, None, |x| async move { x == 4 })
             .await;
 
@@ -593,7 +608,8 @@ mod tests {
     async fn any_par_short_circuits() {
         let evaluated = Arc::new(Mutex::new(Vec::new()));
 
-        let result = iter([1, 2, 3, 4, 5, 6, 7])
+        let result = [1, 2, 3, 4, 5, 6, 7]
+            .into_deluge()
             .any_par(2, 1, |x| {
                 let evaluated = evaluated.clone();
                 async move {
@@ -614,7 +630,9 @@ mod tests {
 
     #[tokio::test]
     async fn all_works() {
-        let result = iter([1, 2, 3, 4]).all(None, |x| async move { x < 5 }).await;
+        let result = [1, 2, 3, 4]
+            .into_deluge()
+            .all(None, |x| async move { x < 5 }).await;
 
         assert!(result);
     }
@@ -623,7 +641,8 @@ mod tests {
     async fn all_short_circuits() {
         let evaluated = Arc::new(Mutex::new(Vec::new()));
 
-        let result = iter([1, 2, 3, 4, 5, 6, 7])
+        let result = [1, 2, 3, 4, 5, 6, 7]
+            .into_deluge()
             .all(1, |x| {
                 let evaluated = evaluated.clone();
                 async move {
@@ -644,7 +663,8 @@ mod tests {
 
     #[tokio::test]
     async fn all_par_works() {
-        let result = iter([1, 2, 3, 4])
+        let result = [1, 2, 3, 4]
+            .into_deluge()
             .all_par(None, None, |x| async move { x < 5 })
             .await;
 
@@ -655,7 +675,8 @@ mod tests {
     async fn all_par_short_circuits() {
         let evaluated = Arc::new(Mutex::new(Vec::new()));
 
-        let result = iter([1, 2, 3, 4, 5, 6, 7])
+        let result = [1, 2, 3, 4, 5, 6, 7]
+            .into_deluge()
             .all_par(2, 1, |x| {
                 let evaluated = evaluated.clone();
                 async move {
@@ -676,8 +697,9 @@ mod tests {
 
     #[tokio::test]
     async fn chain_works() {
-        let result = iter([1, 2, 3, 4])
-            .chain(iter([5, 6, 7, 8]))
+        let result = [1, 2, 3, 4]
+            .into_deluge()
+            .chain([5, 6, 7, 8].into_deluge())
             .collect::<Vec<usize>>(None)
             .await;
 
@@ -687,14 +709,15 @@ mod tests {
 
     #[tokio::test]
     async fn count_works() {
-        let result = iter([1, 2, 3, 4]).count();
+        let result = [1, 2, 3, 4].into_deluge().count();
 
         assert_eq!(result, 4);
     }
 
     #[tokio::test]
     async fn we_can_mult() {
-        let result = iter([1, 2, 3, 4])
+        let result = [1, 2, 3, 4]
+            .into_deluge()
             .map(|x| async move { x * 2 })
             .collect::<Vec<usize>>(None)
             .await;
@@ -704,7 +727,8 @@ mod tests {
 
     #[tokio::test]
     async fn filter_map_works() {
-        let result = iter([1, 2, 3, 4])
+        let result = [1, 2, 3, 4]
+            .into_deluge()
             .filter_map(|x| async move {
                 if x % 2 == 0 {
                     Some("yes")
@@ -736,7 +760,8 @@ mod tests {
     #[tokio::test]
     async fn we_wait_cuncurrently() {
         let start = Instant::now();
-        let result = iter(0..100)
+        let result = (0..100)
+            .into_deluge()
             .map(|idx| async move {
                 tokio::time::sleep(Duration::from_millis(100 - (idx as u64))).await;
                 idx
@@ -758,7 +783,8 @@ mod tests {
     #[tokio::test]
     async fn concurrency_limit() {
         let start = Instant::now();
-        let result = iter(0..15)
+        let result = (0..15)
+            .into_deluge()
             .map(|idx| async move {
                 tokio::time::sleep(Duration::from_millis(50)).await;
                 idx
@@ -810,7 +836,8 @@ mod tests {
     #[tokio::test]
     async fn concurrent_fold() {
         let start = Instant::now();
-        let result = iter(0..100)
+        let result = (0..100)
+            .into_deluge()
             .map(|idx| async move {
                 tokio::time::sleep(Duration::from_millis(100)).await;
                 idx
@@ -868,7 +895,8 @@ mod tests {
     #[tokio::test]
     async fn parallel_fold() {
         let start = Instant::now();
-        let result = iter(0..150)
+        let result = (0..150)
+            .into_deluge()
             .map(|idx| async move {
                 tokio::time::sleep(Duration::from_millis(50)).await;
                 idx
@@ -887,7 +915,8 @@ mod tests {
     #[async_std::test]
     async fn parallel_fold() {
         let start = Instant::now();
-        let result = iter(0..150)
+        let result = (0..150)
+            .into_deluge()
             .map(|idx| async move {
                 async_std::task::sleep(Duration::from_millis(50)).await;
                 idx
@@ -905,7 +934,8 @@ mod tests {
     #[cfg(feature = "async-runtime")]
     #[tokio::test]
     async fn zips_work() {
-        let result = iter(0..100)
+        let result = (0..100)
+            .into_deluge()
             .zip((10..90).into_deluge(), None)
             .collect::<Vec<(usize, usize)>>(None)
             .await;
@@ -923,7 +953,8 @@ mod tests {
             idx
         });
 
-        let result = iter((0..100).rev())
+        let result = (0..100).rev()
+            .into_deluge()
             .map(|idx| async move {
                 tokio::time::sleep(Duration::from_millis(idx)).await;
                 idx
@@ -944,7 +975,8 @@ mod tests {
     /*
     #[tokio::test]
     async fn filter_works() {
-        let result = iter(0..100)
+        let result = (0..100)
+            .into_deluge()
             .filter(|idx| async move {
                 idx % 2 == 0
             })
